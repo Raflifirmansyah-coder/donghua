@@ -1,0 +1,254 @@
+/* ============================================================
+   BAGIAN 3: TEMA MODERN GELAP FUTURISTIK + EFEK AIR + GLASSMORPHISM
+   ============================================================ */
+
+:root {
+  --bg-black: #020617;
+  --bg-slate: #0f172a;
+  --bg-slate-light: #1e293b;
+  --cyan: #22d3ee;
+  --cyan-dim: rgba(34, 211, 238, 0.15);
+  --blue: #0ea5e9;
+  --text: #e2e8f0;
+  --text-dim: #94a3b8;
+  --danger: #f87171;
+  --glass-bg: rgba(15, 23, 42, 0.55);
+  --glass-border: rgba(34, 211, 238, 0.25);
+  --radius: 16px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Segoe UI', Roboto, -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg-black);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+.hidden { display: none !important; }
+.text-dim { color: var(--text-dim); }
+
+/* ============= SPA SECTIONS ============= */
+.page-section { display: none; min-height: 100vh; position: relative; }
+.page-section.active { display: block; }
+
+.container { max-width: 1200px; margin: 0 auto; padding: 100px 24px 60px; }
+
+/* ============= NAVBAR ============= */
+.navbar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 32px;
+  background: rgba(2, 6, 23, 0.75);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--glass-border);
+}
+.nav-brand { font-size: 20px; font-weight: 700; color: var(--text); }
+.nav-brand span { color: var(--cyan); }
+.nav-links { display: flex; align-items: center; gap: 22px; }
+.nav-links a { color: var(--text-dim); text-decoration: none; cursor: pointer; font-weight: 500; transition: color .2s; }
+.nav-links a:hover { color: var(--cyan); }
+.nav-user { color: var(--text-dim); font-size: 14px; }
+.nav-user strong { color: var(--cyan); }
+.btn-logout {
+  background: transparent; border: 1px solid var(--danger); color: var(--danger);
+  padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: 600;
+  transition: all .2s;
+}
+.btn-logout:hover { background: var(--danger); color: #fff; }
+
+/* ============================================================
+   EFEK AIR / OMBAK BERGERAK — CSS KEYFRAMES MURNI
+   Aktif otomatis karena hanya berada di dalam #authSection
+   ============================================================ */
+.wave-container {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  background: linear-gradient(180deg, #020617 0%, #04101f 45%, #062033 100%);
+}
+.wave {
+  position: absolute;
+  width: 300%;
+  left: -100%;
+  bottom: -15%;
+  height: 60%;
+  background: rgba(34, 211, 238, 0.09);
+  border-radius: 45%;
+  animation: waveMove 16s linear infinite;
+}
+.wave:nth-child(2) {
+  bottom: -20%;
+  height: 55%;
+  background: rgba(14, 165, 233, 0.11);
+  animation-duration: 22s;
+  animation-direction: reverse;
+}
+.wave:nth-child(3) {
+  bottom: -25%;
+  height: 50%;
+  background: rgba(34, 211, 238, 0.06);
+  animation-duration: 30s;
+}
+@keyframes waveMove {
+  0%   { transform: translateX(0) rotate(0deg); }
+  50%  { transform: translateX(-20%) rotate(180deg); }
+  100% { transform: translateX(0) rotate(360deg); }
+}
+
+/* ============= GLASSMORPHISM ============= */
+.glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+}
+
+/* ============= AUTH CARDS ============= */
+.auth-wrapper {
+  min-height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+}
+.auth-card {
+  display: none;
+  width: 100%; max-width: 400px;
+  padding: 40px 32px;
+  text-align: center;
+  animation: fadeUp .5s ease;
+}
+.auth-card.active { display: block; }
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.brand-title { font-size: 26px; font-weight: 800; margin-bottom: 6px; }
+.brand-title span { color: var(--cyan); }
+.subtitle { color: var(--text-dim); font-size: 14px; margin-bottom: 28px; }
+
+.form-group { text-align: left; margin-bottom: 16px; }
+.form-group label { display: block; font-size: 13px; color: var(--text-dim); margin-bottom: 6px; }
+.form-group input, .comment-input input, .admin-form input {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: rgba(2, 6, 23, 0.5);
+  color: var(--text);
+  font-size: 14px;
+  outline: none;
+  transition: border-color .2s;
+}
+.form-group input:focus, .comment-input input:focus, .admin-form input:focus {
+  border-color: var(--cyan);
+}
+
+.btn-primary {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(120deg, var(--cyan), var(--blue));
+  color: #001018;
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+  margin-top: 8px;
+  transition: transform .15s, box-shadow .15s;
+}
+.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 20px var(--cyan-dim); }
+.btn-small { width: auto; padding: 12px 20px; margin-top: 0; }
+
+.error-text { color: var(--danger); font-size: 13px; margin-top: 10px; min-height: 16px; }
+.switch-text { margin-top: 20px; font-size: 13px; color: var(--text-dim); }
+.switch-text a { color: var(--cyan); cursor: pointer; font-weight: 600; text-decoration: none; }
+
+/* ============= HALAMAN UTAMA ============= */
+.section-title { font-size: 26px; font-weight: 800; margin-bottom: 4px; }
+.section-sub { color: var(--text-dim); font-size: 14px; margin-bottom: 28px; }
+
+.video-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 20px;
+}
+.video-card {
+  cursor: pointer;
+  overflow: hidden;
+  padding: 0;
+  transition: transform .2s, box-shadow .2s;
+}
+.video-card:hover { transform: translateY(-4px); box-shadow: 0 10px 30px var(--cyan-dim); }
+.video-card img { width: 100%; height: 130px; object-fit: cover; display: block; }
+.video-card p {
+  padding: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.player-area { margin-top: 40px; }
+.btn-close {
+  background: transparent; border: 1px solid var(--glass-border); color: var(--text-dim);
+  padding: 8px 16px; border-radius: 8px; cursor: pointer; margin-bottom: 16px;
+}
+.btn-close:hover { color: var(--cyan); border-color: var(--cyan); }
+
+.video-frame-wrapper {
+  padding: 12px;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+}
+.video-frame-wrapper iframe { width: 100%; height: 100%; border-radius: 10px; border: none; }
+.player-title { margin: 16px 0; font-size: 20px; font-weight: 700; }
+
+.comments-section { padding: 24px; margin-top: 20px; }
+.comments-section h4 { margin-bottom: 16px; }
+.comments-list { max-height: 280px; overflow-y: auto; margin-bottom: 16px; }
+.comment-item {
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+}
+.comment-item strong { color: var(--cyan); font-size: 13px; }
+.comment-item p { font-size: 14px; margin-top: 2px; color: var(--text); }
+.comment-input { display: flex; gap: 10px; }
+.comment-input input { flex: 1; }
+
+/* ============= DASHBOARD ADMIN ============= */
+.admin-panel { padding: 32px; }
+.admin-form { margin: 24px 0 32px; }
+.admin-form label { display: block; font-size: 13px; color: var(--text-dim); margin-bottom: 8px; }
+.admin-form-row { display: flex; gap: 10px; }
+.admin-form-row input { flex: 1; }
+.admin-msg { display: block; margin-top: 10px; font-size: 13px; color: var(--cyan); }
+
+.table-title { margin-bottom: 14px; font-size: 17px; }
+.table-wrapper { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+th, td {
+  text-align: left;
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+  font-size: 14px;
+}
+th { color: var(--cyan); font-size: 12px; text-transform: uppercase; letter-spacing: .5px; }
+tbody tr:hover { background: rgba(34, 211, 238, 0.05); }
+
+/* ============= RESPONSIVE ============= */
+@media (max-width: 640px) {
+  .navbar { padding: 14px 16px; }
+  .nav-links { gap: 12px; }
+  .nav-user { display: none; }
+  .container { padding: 90px 16px 40px; }
+  .admin-form-row { flex-direction: column; }
+  .admin-form-row button { width: 100%; }
+}

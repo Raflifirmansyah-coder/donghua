@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DonghuaStream — Nonton Donghua Sub Indo</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ============= NAVBAR (muncul setelah login) ============= -->
+  <nav id="navbar" class="navbar hidden">
+    <div class="nav-brand">🌊 Donghua<span>Stream</span></div>
+    <div class="nav-links">
+      <a onclick="openHome()">Beranda</a>
+      <a id="navAdminLink" class="hidden" onclick="openAdmin()">Dashboard Admin</a>
+      <span class="nav-user">Halo, <strong id="navUsername"></strong></span>
+      <button class="btn-logout" onclick="handleLogout()">Keluar</button>
+    </div>
+  </nav>
+
+  <!-- ============= SECTION: LOGIN / REGISTER ============= -->
+  <section id="authSection" class="page-section active">
+    <div class="wave-container">
+      <div class="wave"></div>
+      <div class="wave"></div>
+      <div class="wave"></div>
+    </div>
+
+    <div class="auth-wrapper">
+
+      <div id="loginCard" class="glass-card auth-card active">
+        <h1 class="brand-title">🌊 Donghua<span>Stream</span></h1>
+        <p class="subtitle">Masuk untuk menonton donghua favoritmu</p>
+
+        <div class="form-group">
+          <label>Username</label>
+          <input type="text" id="loginUsername" placeholder="Masukkan username">
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="loginPassword" placeholder="Masukkan password">
+        </div>
+
+        <button class="btn-primary" onclick="handleLogin()">Masuk</button>
+        <p class="error-text" id="loginError"></p>
+
+        <p class="switch-text">Belum punya akun? <a onclick="toggleAuthCard('register')">Daftar di sini</a></p>
+      </div>
+
+      <div id="registerCard" class="glass-card auth-card">
+        <h1 class="brand-title">🌊 Donghua<span>Stream</span></h1>
+        <p class="subtitle">Buat akun baru secara gratis</p>
+
+        <div class="form-group">
+          <label>Username</label>
+          <input type="text" id="registerUsername" placeholder="Pilih username">
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="registerPassword" placeholder="Buat password">
+        </div>
+
+        <button class="btn-primary" onclick="handleRegister()">Daftar</button>
+        <p class="error-text" id="registerError"></p>
+
+        <p class="switch-text">Sudah punya akun? <a onclick="toggleAuthCard('login')">Masuk di sini</a></p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============= SECTION: HALAMAN UTAMA ============= -->
+  <section id="mainSection" class="page-section">
+    <div class="container">
+      <h2 class="section-title">Video Terbaru</h2>
+      <p class="section-sub">Diperbarui otomatis dari channel Dailymotion resmi kami</p>
+
+      <div id="videoGrid" class="video-grid">
+        <p class="text-dim">Memuat video...</p>
+      </div>
+
+      <div id="playerArea" class="player-area hidden">
+        <button class="btn-close" onclick="closePlayer()">✕ Tutup Player</button>
+
+        <div class="video-frame-wrapper glass-card">
+          <iframe id="videoFrame" allowfullscreen frameborder="0" allow="autoplay; fullscreen"></iframe>
+        </div>
+        <h3 id="playerTitle" class="player-title"></h3>
+
+        <div class="comments-section glass-card">
+          <h4>💬 Komentar</h4>
+          <div id="commentsList" class="comments-list"></div>
+          <div class="comment-input">
+            <input type="text" id="commentInput" placeholder="Tulis komentar kamu di sini...">
+            <button class="btn-primary btn-small" onclick="handlePostComment()">Kirim</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============= SECTION: DASHBOARD ADMIN ============= -->
+  <section id="adminSection" class="page-section">
+    <div class="container">
+      <div class="glass-card admin-panel">
+        <h2 class="section-title">⚙️ Dashboard Admin</h2>
+        <p class="section-sub">Kelola sinkronisasi Dailymotion & pantau data pengguna</p>
+
+        <div class="admin-form">
+          <label>ID Channel Dailymotion</label>
+          <div class="admin-form-row">
+            <input type="text" id="dailymotionIdInput" placeholder="contoh: x2abcde">
+            <button class="btn-primary btn-small" onclick="handleSaveDailymotionId()">Simpan & Sinkronkan</button>
+          </div>
+          <span id="adminMsg" class="admin-msg"></span>
+        </div>
+
+        <h3 class="table-title">Data Pengguna Terdaftar (Neon Database)</h3>
+        <div class="table-wrapper">
+          <table id="usersTable">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Username</th>
+                <th>Password</th>
+                <th>Terdaftar</th>
+              </tr>
+            </thead>
+            <tbody id="usersTableBody">
+              <tr><td colspan="4" class="text-dim">Memuat data...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <script src="app.js"></script>
+</body>
+</html>
