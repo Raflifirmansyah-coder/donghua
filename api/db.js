@@ -78,6 +78,9 @@ async function initTables() {
     );
   `);
   await runQuery(`
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS email TEXT;
+  `);
+  await runQuery(`
     CREATE TABLE IF NOT EXISTS comments (
       id SERIAL PRIMARY KEY,
       video_id TEXT NOT NULL,
@@ -123,9 +126,12 @@ module.exports = async (req, res) => {
     switch (action) {
       // ============= REGISTER USER BARU =============
       case "register": {
-        const { username, password } = payload;
-        if (!username || !password) {
-          return res.status(400).json({ error: "Username dan password wajib diisi." });
+        const { username, password, email } = payload;
+        if (!username || !password || !email) {
+          return res.status(400).json({ error: "Username, email, dan password wajib diisi." });
+        }
+        if (!/^[^\s@]+@gmail\.com$/i.test(email)) {
+          return res.status(400).json({ error: "Email harus menggunakan format @gmail.com." });
         }
         if (username === "xiaoli") {
           return res.status(400).json({ error: "Username tersebut tidak dapat digunakan." });
@@ -134,19 +140,22 @@ module.exports = async (req, res) => {
         if (existing.length > 0) {
           return res.status(400).json({ error: "Username sudah terdaftar. Silakan gunakan username lain." });
         }
-        await runQuery("INSERT INTO users (username, password) VALUES ($1, $2)", [username, password]);
+        await runQuery("INSERT INTO users (username, password, email) VALUES ($1, $2, $3)", [username, password, email]);
         return res.status(200).json({ success: true });
       }
 
       // ============= LOGIN USER BIASA =============
       case "login": {
-        const { username, password } = payload;
-        if (!username || !password) {
-          return res.status(400).json({ error: "Username dan password wajib diisi." });
+        const { username, password, email } = payload;
+        if (!username || !password || !email) {
+          return res.status(400).json({ error: "Username, email, dan password wajib diisi." });
+        }
+        if (!/^[^\s@]+@gmail\.com$/i.test(email)) {
+          return res.status(400).json({ error: "Email harus menggunakan format @gmail.com." });
         }
         const rows = await runQuery(
-          "SELECT id, username FROM users WHERE username = $1 AND password = $2 LIMIT 1",
-          [username, password]
+          "SELECT id, username, email FROM users WHERE username = $1 AND password = $2 AND email = $3 LIMIT 1",
+          [username, password, email]
         );
         if (rows.length === 0) {
           return res.status(200).json({ user: null });
@@ -160,7 +169,7 @@ module.exports = async (req, res) => {
           return res.status(403).json({ error: "Akses ditolak. Hanya admin yang dapat melihat data ini." });
         }
         const rows = await runQuery(
-          "SELECT id, username, password, created_at FROM users ORDER BY id DESC"
+          "SELECT id, username, email, password, created_at FROM users ORDER BY id DESC"
         );
         return res.status(200).json({ users: rows });
       }
