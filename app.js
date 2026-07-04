@@ -56,6 +56,54 @@ function escapeHtml(str) {
 }
 
 // ------------------------------------------------------------
+// NOTIFIKASI TOAST
+// ------------------------------------------------------------
+function showToast(message, type = "success", duration = 3500) {
+  const container = document.getElementById("toastContainer");
+  const toast = document.createElement("div");
+  toast.className = `toast ${type}`;
+
+  const icon = type === "success" ? "✓" : type === "error" ? "✕" : "i";
+  toast.innerHTML = `<span class="toast-icon">${icon}</span><span class="toast-msg">${escapeHtml(message)}</span>`;
+
+  container.appendChild(toast);
+
+  setTimeout(() => {
+    toast.classList.add("exit");
+    setTimeout(() => toast.remove(), 350);
+  }, duration);
+}
+
+// ------------------------------------------------------------
+// ANIMASI: GONCANG (GAGAL) & DENYUT (BERHASIL)
+// ------------------------------------------------------------
+function triggerShake(el) {
+  el.classList.remove("shake");
+  void el.offsetWidth; // reflow paksa agar animasi bisa diulang
+  el.classList.add("shake");
+  setTimeout(() => el.classList.remove("shake"), 550);
+}
+
+function triggerSuccessPulse(el) {
+  el.classList.remove("success-pulse");
+  void el.offsetWidth;
+  el.classList.add("success-pulse");
+  setTimeout(() => el.classList.remove("success-pulse"), 750);
+}
+
+// ------------------------------------------------------------
+// OVERLAY "MENGALIHKAN..." (KHUSUS ADMIN)
+// ------------------------------------------------------------
+function showRedirectOverlay(text) {
+  document.getElementById("redirectText").textContent = text;
+  document.getElementById("redirectOverlay").classList.remove("hidden");
+}
+
+function hideRedirectOverlay() {
+  document.getElementById("redirectOverlay").classList.add("hidden");
+}
+
+// ------------------------------------------------------------
 // Navigasi SPA (manipulasi ID / kelas .active)
 // ------------------------------------------------------------
 function showSection(id) {
@@ -77,21 +125,31 @@ async function handleRegister() {
   const username = document.getElementById("registerUsername").value.trim();
   const password = document.getElementById("registerPassword").value;
   const errEl = document.getElementById("registerError");
+  const card = document.getElementById("registerCard");
   errEl.textContent = "";
 
   if (!username || !password) {
     errEl.textContent = "Username dan password wajib diisi.";
+    triggerShake(card);
+    showToast("Username dan password wajib diisi.", "error");
     return;
   }
 
   try {
     await api("register", { username, password });
+
+    triggerSuccessPulse(card);
+    showToast(`Pendaftaran berhasil! Selamat datang, ${username} 🎉`, "success");
+
     state.currentUser = username;
     state.isAdmin = false;
     sessionStorage.setItem("donghua_session", JSON.stringify({ username, isAdmin: false }));
-    enterApp();
+
+    setTimeout(() => enterApp(), 700);
   } catch (e) {
     errEl.textContent = e.message;
+    triggerShake(card);
+    showToast(e.message, "error");
   }
 }
 
@@ -103,20 +161,33 @@ async function handleLogin() {
   const username = document.getElementById("loginUsername").value.trim();
   const password = document.getElementById("loginPassword").value;
   const errEl = document.getElementById("loginError");
+  const card = document.getElementById("loginCard");
   errEl.textContent = "";
 
   if (!username || !password) {
     errEl.textContent = "Username dan password wajib diisi.";
+    triggerShake(card);
+    showToast("Username dan password wajib diisi.", "error");
     return;
   }
 
   // ===== ATURAN VALIDASI KETAT UNTUK ADMIN (HARDCODED) =====
   if (username === ADMIN_USER && password === ADMIN_PASS) {
+    triggerSuccessPulse(card);
+    showToast("Login admin berhasil!", "success");
+
     state.currentUser = username;
     state.isAdmin = true;
     sessionStorage.setItem("donghua_session", JSON.stringify({ username, isAdmin: true }));
-    enterApp();
-    openAdmin();
+
+    setTimeout(() => {
+      showRedirectOverlay("Mengalihkan ke Dashboard Admin...");
+      setTimeout(() => {
+        hideRedirectOverlay();
+        enterApp();
+        openAdmin();
+      }, 1300);
+    }, 400);
     return;
   }
 
@@ -125,14 +196,23 @@ async function handleLogin() {
     const data = await api("login", { username, password });
     if (!data.user) {
       errEl.textContent = "Username atau password salah.";
+      triggerShake(card);
+      showToast("Username atau password salah.", "error");
       return;
     }
+
+    triggerSuccessPulse(card);
+    showToast(`Login berhasil! Selamat datang, ${data.user.username} 👋`, "success");
+
     state.currentUser = data.user.username;
     state.isAdmin = false;
     sessionStorage.setItem("donghua_session", JSON.stringify({ username: data.user.username, isAdmin: false }));
-    enterApp();
+
+    setTimeout(() => enterApp(), 700);
   } catch (e) {
     errEl.textContent = e.message;
+    triggerShake(card);
+    showToast(e.message, "error");
   }
 }
 
@@ -305,9 +385,10 @@ async function handlePostComment() {
   try {
     await api("postComment", { videoId: state.currentVideoId, username, comment: text });
     input.value = "";
+    showToast("Komentar terkirim!", "success", 2000);
     loadComments(state.currentVideoId);
   } catch (e) {
-    alert("Gagal mengirim komentar: " + e.message);
+    showToast("Gagal mengirim komentar: " + e.message, "error");
   }
 }
 
@@ -370,12 +451,14 @@ async function handleSaveDailymotionId() {
     await api("saveDailymotionId", { channelId: val, adminUser: ADMIN_USER, adminPass: ADMIN_PASS });
     state.dailymotionId = val;
     msg.textContent = "✓ Berhasil disimpan & disinkronkan.";
+    showToast("ID channel Dailymotion berhasil disinkronkan!", "success");
     if (document.getElementById("mainSection")) {
       refreshVideos();
     }
     setTimeout(() => (msg.textContent = ""), 3000);
   } catch (e) {
     msg.textContent = "Gagal: " + e.message;
+    showToast("Gagal menyimpan: " + e.message, "error");
   }
 }
 
