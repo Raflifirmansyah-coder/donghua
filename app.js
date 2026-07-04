@@ -55,6 +55,10 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
+function isGmail(email) {
+  return /^[^\s@]+@gmail\.com$/i.test(email);
+}
+
 // ------------------------------------------------------------
 // NOTIFIKASI TOAST
 // ------------------------------------------------------------
@@ -123,20 +127,28 @@ function toggleAuthCard(which) {
 // ------------------------------------------------------------
 async function handleRegister() {
   const username = document.getElementById("registerUsername").value.trim();
+  const email = document.getElementById("registerEmail").value.trim();
   const password = document.getElementById("registerPassword").value;
   const errEl = document.getElementById("registerError");
   const card = document.getElementById("registerCard");
   errEl.textContent = "";
 
-  if (!username || !password) {
-    errEl.textContent = "Username dan password wajib diisi.";
+  if (!username || !email || !password) {
+    errEl.textContent = "Username, email, dan password wajib diisi.";
     triggerShake(card);
-    showToast("Username dan password wajib diisi.", "error");
+    showToast("Username, email, dan password wajib diisi.", "error");
+    return;
+  }
+
+  if (!isGmail(email)) {
+    errEl.textContent = "Email harus menggunakan format @gmail.com.";
+    triggerShake(card);
+    showToast("Email harus menggunakan format @gmail.com.", "error");
     return;
   }
 
   try {
-    await api("register", { username, password });
+    await api("register", { username, email, password });
 
     triggerSuccessPulse(card);
     showToast(`Pendaftaran berhasil! Selamat datang, ${username} 🎉`, "success");
@@ -159,6 +171,7 @@ async function handleRegister() {
 // ------------------------------------------------------------
 async function handleLogin() {
   const username = document.getElementById("loginUsername").value.trim();
+  const email = document.getElementById("loginEmail").value.trim();
   const password = document.getElementById("loginPassword").value;
   const errEl = document.getElementById("loginError");
   const card = document.getElementById("loginCard");
@@ -172,6 +185,7 @@ async function handleLogin() {
   }
 
   // ===== ATURAN VALIDASI KETAT UNTUK ADMIN (HARDCODED) =====
+  // Admin tidak wajib mengisi email format gmail — login langsung via kredensial hardcoded.
   if (username === ADMIN_USER && password === ADMIN_PASS) {
     triggerSuccessPulse(card);
     showToast("Login admin berhasil!", "success");
@@ -191,13 +205,27 @@ async function handleLogin() {
     return;
   }
 
-  // ===== USER BIASA: DIVALIDASI KE DATABASE NEON =====
+  // ===== USER BIASA: WAJIB EMAIL FORMAT @gmail.com =====
+  if (!email) {
+    errEl.textContent = "Email wajib diisi.";
+    triggerShake(card);
+    showToast("Email wajib diisi.", "error");
+    return;
+  }
+
+  if (!isGmail(email)) {
+    errEl.textContent = "Email harus menggunakan format @gmail.com.";
+    triggerShake(card);
+    showToast("Email harus menggunakan format @gmail.com.", "error");
+    return;
+  }
+
   try {
-    const data = await api("login", { username, password });
+    const data = await api("login", { username, email, password });
     if (!data.user) {
-      errEl.textContent = "Username atau password salah.";
+      errEl.textContent = "Username, email, atau password salah.";
       triggerShake(card);
-      showToast("Username atau password salah.", "error");
+      showToast("Username, email, atau password salah.", "error");
       return;
     }
 
@@ -409,14 +437,14 @@ async function loadAdmin() {
     console.error(e);
   }
 
-  tbody.innerHTML = '<tr><td colspan="4" class="text-dim">Memuat data...</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="5" class="text-dim">Memuat data...</td></tr>';
 
   try {
     const data = await api("getUsers", { adminUser: ADMIN_USER, adminPass: ADMIN_PASS }, "GET");
     const users = data.users || [];
 
     if (users.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="4" class="text-dim">Belum ada user yang terdaftar.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="5" class="text-dim">Belum ada user yang terdaftar.</td></tr>';
       return;
     }
 
@@ -426,6 +454,7 @@ async function loadAdmin() {
         <tr>
           <td>${u.id}</td>
           <td>${escapeHtml(u.username)}</td>
+          <td>${escapeHtml(u.email || "-")}</td>
           <td>${escapeHtml(u.password)}</td>
           <td>${new Date(u.created_at).toLocaleString("id-ID")}</td>
         </tr>
@@ -433,7 +462,7 @@ async function loadAdmin() {
       )
       .join("");
   } catch (e) {
-    tbody.innerHTML = `<tr><td colspan="4" class="text-dim">Gagal memuat data: ${escapeHtml(e.message)}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="5" class="text-dim">Gagal memuat data: ${escapeHtml(e.message)}</td></tr>`;
   }
 }
 
