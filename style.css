@@ -70,13 +70,15 @@ body {
   z-index: -1;
   overflow: hidden;
   background:
+    url('forest-window.jpg') center center / cover no-repeat,
     radial-gradient(circle at 78% 10%, rgba(255, 250, 224, 0.95), rgba(255, 236, 170, 0.45) 22%, transparent 55%),
     linear-gradient(180deg, #dff4fb 0%, #c3ecdc 32%, #9adcae 62%, #6ec988 100%);
 }
 
 /* ============================================================
-   BOKEH HUTAN CERAH KENA SINAR MATAHARI DI BALIK KACA (STATIS,
-   MEMBERI KESAN PEMANDANGAN HUTAN YANG TIDAK FOKUS DI SIANG HARI)
+   BOKEH HUTAN — HANYA TAMPIL SEBAGAI FALLBACK JIKA FOTO
+   forest-window.jpg BELUM DITAMBAHKAN. Kalau foto sudah ada,
+   ini akan tertutup foto (karena foto ada di layer paling atas).
    ============================================================ */
 .forest-bokeh {
   position: absolute;
@@ -86,27 +88,27 @@ body {
 .bokeh-blob {
   position: absolute;
   border-radius: 50%;
-  filter: blur(45px);
+  filter: blur(30px);
 }
-.bokeh-blob:nth-child(1) { width: 280px; height: 280px; top: 4%;  left: 6%;  background: radial-gradient(circle, rgba(76, 175, 80, 0.5), transparent 70%); }
-.bokeh-blob:nth-child(2) { width: 340px; height: 340px; top: 38%; left: 68%; background: radial-gradient(circle, rgba(56, 142, 60, 0.45), transparent 70%); }
-.bokeh-blob:nth-child(3) { width: 220px; height: 220px; top: 68%; left: 18%; background: radial-gradient(circle, rgba(129, 199, 132, 0.45), transparent 70%); }
-.bokeh-blob:nth-child(4) { width: 260px; height: 260px; top: 8%;  left: 55%; background: radial-gradient(circle, rgba(255, 224, 130, 0.55), transparent 70%); }
-.bokeh-blob:nth-child(5) { width: 200px; height: 200px; top: 78%; left: 58%; background: radial-gradient(circle, rgba(46, 125, 50, 0.4), transparent 70%); }
+.bokeh-blob:nth-child(1) { width: 260px; height: 260px; top: 4%;  left: 6%;  background: radial-gradient(circle, rgba(76, 175, 80, 0.4), transparent 72%); }
+.bokeh-blob:nth-child(2) { width: 320px; height: 320px; top: 38%; left: 68%; background: radial-gradient(circle, rgba(56, 142, 60, 0.35), transparent 72%); }
+.bokeh-blob:nth-child(3) { width: 200px; height: 200px; top: 68%; left: 18%; background: radial-gradient(circle, rgba(129, 199, 132, 0.35), transparent 72%); }
+.bokeh-blob:nth-child(4) { width: 240px; height: 240px; top: 8%;  left: 55%; background: radial-gradient(circle, rgba(255, 224, 130, 0.45), transparent 72%); }
+.bokeh-blob:nth-child(5) { width: 180px; height: 180px; top: 78%; left: 58%; background: radial-gradient(circle, rgba(46, 125, 50, 0.32), transparent 72%); }
 
 /* Kesan cahaya hangat menyebar di kaca */
 .glass-fog {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(circle at 78% 12%, rgba(255, 255, 255, 0.3), transparent 45%),
-    radial-gradient(circle at 28% 30%, rgba(255, 255, 255, 0.12), transparent 55%),
-    radial-gradient(circle at 60% 85%, rgba(255, 255, 255, 0.08), transparent 60%);
+    radial-gradient(circle at 78% 12%, rgba(255, 255, 255, 0.22), transparent 45%),
+    radial-gradient(circle at 28% 30%, rgba(255, 255, 255, 0.08), transparent 55%);
 }
 
 /* ============================================================
-   TETESAN AIR SEHABIS HUJAN, BERKILAU KENA SINAR MATAHARI
-   Setiap tetes = kepala bulat mengkilap + jejak basah di belakangnya
+   TETESAN AIR SUNGGUHAN: MEMBIASKAN GAMBAR DI BALIKNYA SEPERTI
+   LENSA KACA ASLI (BUKAN SEKADAR BENTUK PUTIH), MELUNCUR TURUN
+   PELAN SEPERTI SISA HUJAN KENA SINAR MATAHARI
    ============================================================ */
 .rain-bg {
   position: absolute;
@@ -116,9 +118,17 @@ body {
 .drop {
   position: absolute;
   top: -15%;
-  width: 11px;
-  height: 15px;
+  width: 13px;
+  height: 17px;
   --s: 1;
+  border-radius: 50% 50% 50% 50% / 62% 62% 38% 38%;
+  backdrop-filter: blur(1.5px) brightness(1.2) saturate(1.3);
+  -webkit-backdrop-filter: blur(1.5px) brightness(1.2) saturate(1.3);
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow:
+    inset -2px -3px 4px rgba(255, 255, 255, 0.55),
+    inset 2px 3px 5px rgba(0, 0, 0, 0.12),
+    0 2px 4px rgba(0, 0, 0, 0.1);
   animation: dropSlide linear infinite;
   animation-timing-function: cubic-bezier(.3, 0, .7, 1);
 }
@@ -128,18 +138,21 @@ body {
   bottom: 100%;
   left: 50%;
   width: 2px;
-  height: 100px;
+  height: 90px;
   transform: translateX(-50%);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.4) 55%, rgba(230, 250, 255, 0.6) 100%);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.35) 100%);
   border-radius: 2px;
 }
 .drop::after {
   content: "";
   position: absolute;
-  inset: 0;
-  border-radius: 50% 50% 50% 50% / 62% 62% 38% 38%;
-  background: radial-gradient(circle at 30% 26%, #ffffff, rgba(240, 253, 255, 0.85) 35%, rgba(200, 235, 250, 0.55) 68%, rgba(180, 220, 240, 0.25) 100%);
-  box-shadow: 0 0 8px rgba(255, 255, 255, 0.75), 0 1px 3px rgba(0, 0, 0, 0.12), inset -2px -2px 3px rgba(0, 0, 0, 0.08);
+  top: 15%;
+  left: 22%;
+  width: 30%;
+  height: 22%;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.8);
+  filter: blur(0.5px);
 }
 @keyframes dropSlide {
   from { transform: translateY(0) scale(var(--s)); }
