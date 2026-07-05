@@ -100,6 +100,80 @@ body {
   100% { transform: translateX(0) rotate(360deg); }
 }
 
+/* ============================================================
+   PARTIKEL BINTANG BERKELIP + KABUT CAHAYA MENGAMBANG
+   ============================================================ */
+.stars {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+.stars span {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.9), 0 0 2px #fff;
+  opacity: 0;
+  animation: twinkle ease-in-out infinite, drift linear infinite;
+}
+@keyframes twinkle {
+  0%, 100% { opacity: 0; transform: scale(0.6); }
+  50%      { opacity: 1; transform: scale(1.4); }
+}
+@keyframes drift {
+  from { transform: translateY(0); }
+  to   { transform: translateY(-60px); }
+}
+
+.stars span:nth-child(1)  { top: 8%;  left: 5%;  animation-duration: 3.2s, 14s; animation-delay: 0s, 0s; }
+.stars span:nth-child(2)  { top: 22%; left: 88%; animation-duration: 4.1s, 18s; animation-delay: .4s, 1s; }
+.stars span:nth-child(3)  { top: 65%; left: 12%; animation-duration: 2.8s, 12s; animation-delay: .9s, 2s; }
+.stars span:nth-child(4)  { top: 45%; left: 76%; animation-duration: 3.6s, 16s; animation-delay: 1.3s, .5s; }
+.stars span:nth-child(5)  { top: 12%; left: 40%; animation-duration: 3.9s, 20s; animation-delay: 1.8s, 1.5s; }
+.stars span:nth-child(6)  { top: 78%; left: 60%; animation-duration: 2.5s, 13s; animation-delay: .2s, 2.4s; }
+.stars span:nth-child(7)  { top: 33%; left: 22%; animation-duration: 4.4s, 17s; animation-delay: 2.1s, .8s; }
+.stars span:nth-child(8)  { top: 90%; left: 30%; animation-duration: 3.1s, 15s; animation-delay: .7s, 1.9s; }
+.stars span:nth-child(9)  { top: 5%;  left: 65%; animation-duration: 2.9s, 19s; animation-delay: 1.5s, .3s; }
+.stars span:nth-child(10) { top: 55%; left: 90%; animation-duration: 3.7s, 11s; animation-delay: .1s, 2.7s; }
+.stars span:nth-child(11) { top: 70%; left: 45%; animation-duration: 4.2s, 21s; animation-delay: 2.4s, 1.1s; }
+.stars span:nth-child(12) { top: 15%; left: 15%; animation-duration: 2.6s, 14s; animation-delay: .5s, .6s; }
+.stars span:nth-child(13) { top: 38%; left: 95%; animation-duration: 3.4s, 18s; animation-delay: 1.9s, 2.2s; }
+.stars span:nth-child(14) { top: 82%; left: 8%;  animation-duration: 3.8s, 12s; animation-delay: .3s, 1.4s; }
+.stars span:nth-child(15) { top: 25%; left: 55%; animation-duration: 2.7s, 16s; animation-delay: 1.1s, .9s; }
+.stars span:nth-child(16) { top: 60%; left: 25%; animation-duration: 4.0s, 20s; animation-delay: 2.6s, .2s; }
+.stars span:nth-child(17) { top: 48%; left: 10%; animation-duration: 3.3s, 13s; animation-delay: .8s, 2.0s; }
+.stars span:nth-child(18) { top: 3%;  left: 82%; animation-duration: 2.9s, 17s; animation-delay: 1.6s, .7s; }
+.stars span:nth-child(19) { top: 92%; left: 70%; animation-duration: 3.5s, 15s; animation-delay: .6s, 1.8s; }
+.stars span:nth-child(20) { top: 18%; left: 30%; animation-duration: 4.3s, 19s; animation-delay: 2.2s, 1.3s; }
+.stars span:nth-child(21) { top: 72%; left: 85%; animation-duration: 2.6s, 11s; animation-delay: .9s, .4s; }
+.stars span:nth-child(22) { top: 40%; left: 5%;  animation-duration: 3.9s, 22s; animation-delay: 1.4s, 2.5s; }
+.stars span:nth-child(23) { top: 58%; left: 50%; animation-duration: 3.0s, 14s; animation-delay: .2s, 1.0s; }
+.stars span:nth-child(24) { top: 10%; left: 72%; animation-duration: 4.5s, 18s; animation-delay: 2.0s, .3s; }
+.stars span:nth-child(25) { top: 85%; left: 40%; animation-duration: 2.8s, 12s; animation-delay: .5s, 1.7s; }
+.stars span:nth-child(26) { top: 30%; left: 68%; animation-duration: 3.6s, 16s; animation-delay: 1.2s, 2.3s; }
+.stars span:nth-child(27) { top: 50%; left: 33%; animation-duration: 4.0s, 20s; animation-delay: 1.7s, .1s; }
+.stars span:nth-child(28) { top: 95%; left: 55%; animation-duration: 3.2s, 13s; animation-delay: .1s, 1.6s; }
+
+.glow-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: .3;
+  animation: orbFloat ease-in-out infinite;
+}
+.orb-1 { width: 240px; height: 240px; top: 8%;  left: 12%; background: radial-gradient(circle, rgba(34, 211, 238, 0.55), transparent 70%); animation-duration: 22s; }
+.orb-2 { width: 300px; height: 300px; top: 55%; left: 68%; background: radial-gradient(circle, rgba(14, 165, 233, 0.45), transparent 70%); animation-duration: 27s; animation-delay: 3s; }
+.orb-3 { width: 200px; height: 200px; top: 72%; left: 18%; background: radial-gradient(circle, rgba(56, 189, 248, 0.45), transparent 70%); animation-duration: 19s; animation-delay: 6s; }
+
+@keyframes orbFloat {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  25%      { transform: translate(30px, -40px) scale(1.1); }
+  50%      { transform: translate(-25px, 25px) scale(0.95); }
+  75%      { transform: translate(20px, 35px) scale(1.05); }
+}
+
 /* ============= GLASSMORPHISM ============= */
 .glass-card {
   background: var(--glass-bg);
@@ -128,10 +202,15 @@ body {
     0 0 18px rgba(34, 211, 238, 0.25),
     0 0 55px rgba(14, 165, 233, 0.15),
     inset 0 0 30px rgba(34, 211, 238, 0.04);
-  animation: fadeUp .5s ease, neonPulse 4.5s ease-in-out infinite;
+  animation: fadeUp .5s ease, neonPulse 4.5s ease-in-out infinite, cardFloat 6s ease-in-out infinite;
 }
 .auth-card.active { display: block; }
 .card-content { position: relative; z-index: 3; }
+
+@keyframes cardFloat {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-8px); }
+}
 
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(16px); }
