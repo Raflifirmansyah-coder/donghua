@@ -10,13 +10,18 @@
  */
 
 const API_URL = "/api/db";
-const ADMIN_USER = "xiaoli";
-const ADMIN_PASS = "0507";
+// Catatan: "xiaoli" di sini HANYA dipakai untuk keperluan tampilan
+// (menyembunyikan kolom email saat mengetik username admin).
+// Ini BUKAN mekanisme keamanan — verifikasi kredensial admin yang
+// sesungguhnya (termasuk passwordnya) terjadi sepenuhnya di server
+// (api/db.js) dan tidak pernah dikirim ke atau disimpan di client.
+const ADMIN_USERNAME_HINT = "xiaoli";
 const POLL_INTERVAL_MS = 15000; // sinkronisasi otomatis tiap 15 detik
 
 const state = {
   currentUser: null,
   isAdmin: false,
+  adminToken: null,
   currentVideoId: null,
   dailymotionId: null,
   pollHandle: null,
@@ -125,9 +130,66 @@ function toggleAuthCard(which) {
 // ------------------------------------------------------------
 // REGISTER — kirim data ke tabel 'users' di Neon lewat fetch POST
 // ------------------------------------------------------------
+let otpCooldownActive = false;
+
+// ------------------------------------------------------------
+// KIRIM KODE OTP KE EMAIL SEBELUM REGISTER
+// ------------------------------------------------------------
+async function handleSendOtp() {
+  const email = document.getElementById("registerEmail").value.trim();
+  const btn = document.getElementById("sendOtpBtn");
+  const errEl = document.getElementById("registerError");
+  errEl.textContent = "";
+
+  if (!email) {
+    errEl.textContent = "Isi email terlebih dahulu sebelum kirim OTP.";
+    showToast("Isi email terlebih dahulu sebelum kirim OTP.", "error");
+    return;
+  }
+  if (!isGmail(email)) {
+    errEl.textContent = "Email harus menggunakan format @gmail.com.";
+    showToast("Email harus menggunakan format @gmail.com.", "error");
+    return;
+  }
+  if (otpCooldownActive) return;
+
+  btn.disabled = true;
+  btn.textContent = "Mengirim...";
+
+  try {
+    await api("sendOtp", { email });
+    showToast("Kode OTP telah dikirim! Cek Inbox (atau folder Spam) email kamu.", "success", 4500);
+    startOtpCooldown(btn);
+  } catch (e) {
+    errEl.textContent = e.message;
+    showToast(e.message, "error");
+    btn.disabled = false;
+    btn.textContent = "Kirim OTP";
+  }
+}
+
+function startOtpCooldown(btn) {
+  otpCooldownActive = true;
+  let seconds = 60;
+  btn.textContent = `Kirim ulang (${seconds}s)`;
+
+  const interval = setInterval(() => {
+    seconds--;
+    if (seconds <= 0) {
+      clearInterval(interval);
+      otpCooldownActive = false;
+      btn.disabled = false;
+      btn.textContent = "Kirim OTP";
+    } else {
+      btn.textContent = `Kirim ulang (${seconds}s)`;
+    }
+  }, 1000);
+}
+
 async function handleRegister() {
   const username = document.getElementById("registerUsername").value.trim();
   const email = document.getElementById("registerEmail").value.trim();
+  const otp = document.getElementById("registerOtp").value.trim();
   const password = document.getElementById("registerPassword").value;
   const errEl = document.getElementById("registerError");
   const card = document.getElementById("registerCard");
@@ -147,8 +209,15 @@ async function handleRegister() {
     return;
   }
 
+  if (!otp) {
+    errEl.textContent = "Masukkan kode OTP yang dikirim ke email kamu.";
+    triggerShake(card);
+    showToast("Masukkan kode OTP yang dikirim ke email kamu.", "error");
+    return;
+  }
+
   try {
-    await api("register", { username, email, password });
+    await api("register", { username, email, password, otp });
 
     triggerSuccessPulse(card);
     showToast(`Pendaftaran berhasil! Selamat datang, ${username} 🎉`, "success");
@@ -184,44 +253,29 @@ async function handleLogin() {
     return;
   }
 
-  // ===== ATURAN VALIDASI KETAT UNTUK ADMIN (HARDCODED) =====
-  // Admin tidak wajib mengisi email format gmail — login langsung via kredensial hardcoded.
-  if (username === ADMIN_USER && password === ADMIN_PASS) {
-    triggerSuccessPulse(card);
-    showToast("Login admin berhasil!", "success");
+  // Email hanya diwajibkan untuk user biasa. Untuk username "xiaoli",
+  // kolom email boleh kosong — tapi ini cuma soal tampilan, keabsahan
+  // login admin yang sesungguhnya tetap diputuskan oleh server.
+  const isAdminAttempt = username === ADMIN_USERNAME_HINT;
 
-    state.currentUser = username;
-    state.isAdmin = true;
-    sessionStorage.setItem("donghua_session", JSON.stringify({ username, isAdmin: true }));
-
-    setTimeout(() => {
-      showRedirectOverlay("Mengalihkan ke Dashboard Admin...");
-      setTimeout(() => {
-        hideRedirectOverlay();
-        enterApp();
-        openAdmin();
-      }, 1300);
-    }, 400);
-    return;
-  }
-
-  // ===== USER BIASA: WAJIB EMAIL FORMAT @gmail.com =====
-  if (!email) {
-    errEl.textContent = "Email wajib diisi.";
-    triggerShake(card);
-    showToast("Email wajib diisi.", "error");
-    return;
-  }
-
-  if (!isGmail(email)) {
-    errEl.textContent = "Email harus menggunakan format @gmail.com.";
-    triggerShake(card);
-    showToast("Email harus menggunakan format @gmail.com.", "error");
-    return;
+  if (!isAdminAttempt) {
+    if (!email) {
+      errEl.textContent = "Email wajib diisi.";
+      triggerShake(card);
+      showToast("Email wajib diisi.", "error");
+      return;
+    }
+    if (!isGmail(email)) {
+      errEl.textContent = "Email harus menggunakan format @gmail.com.";
+      triggerShake(card);
+      showToast("Email harus menggunakan format @gmail.com.", "error");
+      return;
+    }
   }
 
   try {
-    const data = await api("login", { username, email, password });
+    const data = await api("login", { username, password, email });
+
     if (!data.user) {
       errEl.textContent = "Username, email, atau password salah.";
       triggerShake(card);
@@ -229,11 +283,37 @@ async function handleLogin() {
       return;
     }
 
+    // ===== SERVER MENGONFIRMASI INI ADALAH ADMIN =====
+    if (data.isAdmin) {
+      triggerSuccessPulse(card);
+      showToast("Login admin berhasil!", "success");
+
+      state.currentUser = data.user.username;
+      state.isAdmin = true;
+      state.adminToken = data.adminToken;
+      sessionStorage.setItem(
+        "donghua_session",
+        JSON.stringify({ username: data.user.username, isAdmin: true, adminToken: data.adminToken })
+      );
+
+      setTimeout(() => {
+        showRedirectOverlay("Mengalihkan ke Dashboard Admin...");
+        setTimeout(() => {
+          hideRedirectOverlay();
+          enterApp();
+          openAdmin();
+        }, 1300);
+      }, 400);
+      return;
+    }
+
+    // ===== USER BIASA =====
     triggerSuccessPulse(card);
     showToast(`Login berhasil! Selamat datang, ${data.user.username} 👋`, "success");
 
     state.currentUser = data.user.username;
     state.isAdmin = false;
+    state.adminToken = null;
     sessionStorage.setItem("donghua_session", JSON.stringify({ username: data.user.username, isAdmin: false }));
 
     setTimeout(() => enterApp(), 700);
@@ -247,6 +327,7 @@ async function handleLogin() {
 function handleLogout() {
   state.currentUser = null;
   state.isAdmin = false;
+  state.adminToken = null;
   state.currentVideoId = null;
   if (state.pollHandle) clearInterval(state.pollHandle);
   sessionStorage.removeItem("donghua_session");
@@ -275,7 +356,7 @@ function openHome() {
 
 // ===== PROTEKSI: DASHBOARD ADMIN TIDAK BISA DIAKSES TANPA LOGIN ADMIN =====
 function openAdmin() {
-  if (!state.isAdmin) {
+  if (!state.isAdmin || !state.adminToken) {
     alert("Akses ditolak. Hanya admin yang bisa mengakses halaman ini.");
     openHome();
     return;
@@ -440,7 +521,7 @@ async function loadAdmin() {
   tbody.innerHTML = '<tr><td colspan="5" class="text-dim">Memuat data...</td></tr>';
 
   try {
-    const data = await api("getUsers", { adminUser: ADMIN_USER, adminPass: ADMIN_PASS }, "GET");
+    const data = await api("getUsers", { adminToken: state.adminToken }, "GET");
     const users = data.users || [];
 
     if (users.length === 0) {
@@ -463,6 +544,8 @@ async function loadAdmin() {
       .join("");
   } catch (e) {
     tbody.innerHTML = `<tr><td colspan="5" class="text-dim">Gagal memuat data: ${escapeHtml(e.message)}</td></tr>`;
+    showToast("Sesi admin tidak valid atau kedaluwarsa. Silakan login ulang.", "error");
+    setTimeout(() => handleLogout(), 1500);
   }
 }
 
@@ -477,7 +560,7 @@ async function handleSaveDailymotionId() {
   }
 
   try {
-    await api("saveDailymotionId", { channelId: val, adminUser: ADMIN_USER, adminPass: ADMIN_PASS });
+    await api("saveDailymotionId", { channelId: val, adminToken: state.adminToken });
     state.dailymotionId = val;
     msg.textContent = "✓ Berhasil disimpan & disinkronkan.";
     showToast("ID channel Dailymotion berhasil disinkronkan!", "success");
@@ -494,6 +577,20 @@ async function handleSaveDailymotionId() {
 // ------------------------------------------------------------
 // INISIALISASI — pulihkan sesi jika ada, atau tampilkan login
 // ------------------------------------------------------------
+// ------------------------------------------------------------
+// PENDAFTARAN SERVICE WORKER — mengaktifkan kemampuan "Install
+// App" di browser (Chrome/Edge/Safari/Android). Kalau gagal
+// (misal browser lama), aplikasi tetap jalan normal sebagai
+// website biasa, cuma tidak bisa di-install.
+// ------------------------------------------------------------
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/service-worker.js").catch((err) => {
+      console.warn("Service worker gagal didaftarkan:", err);
+    });
+  });
+}
+
 window.addEventListener("DOMContentLoaded", () => {
   const saved = sessionStorage.getItem("donghua_session");
 
@@ -502,6 +599,7 @@ window.addEventListener("DOMContentLoaded", () => {
       const s = JSON.parse(saved);
       state.currentUser = s.username;
       state.isAdmin = !!s.isAdmin;
+      state.adminToken = s.adminToken || null;
       enterApp();
       if (state.isAdmin) openAdmin();
     } catch (e) {
