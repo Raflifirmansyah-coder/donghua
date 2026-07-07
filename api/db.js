@@ -191,9 +191,15 @@ module.exports = async (req, res) => {
           return res.status(400).json({ error: "Email ini sudah terdaftar. Silakan login." });
         }
 
-        const resendKey = process.env.RESEND_API_KEY;
-        if (!resendKey) {
-          return res.status(500).json({ error: "RESEND_API_KEY belum diatur di Environment Variables Vercel." });
+        const serviceId = process.env.EMAILJS_SERVICE_ID;
+        const templateId = process.env.EMAILJS_TEMPLATE_ID;
+        const publicKey = process.env.EMAILJS_PUBLIC_KEY;
+        const privateKey = process.env.EMAILJS_PRIVATE_KEY;
+
+        if (!serviceId || !templateId || !publicKey || !privateKey) {
+          return res.status(500).json({
+            error: "Konfigurasi EmailJS belum lengkap di Environment Variables Vercel (EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, EMAILJS_PUBLIC_KEY, EMAILJS_PRIVATE_KEY).",
+          });
         }
 
         const code = Math.floor(100000 + Math.random() * 900000).toString();
@@ -205,24 +211,18 @@ module.exports = async (req, res) => {
           [email, code, expiresAt]
         );
 
-        const emailRes = await fetch("https://api.resend.com/emails", {
+        const emailRes = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
           method: "POST",
-          headers: {
-            Authorization: `Bearer ${resendKey}`,
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            from: "DonghuaStream <onboarding@resend.dev>",
-            to: [email],
-            subject: "Kode OTP Pendaftaran DonghuaStream",
-            html: `
-              <div style="font-family: sans-serif; padding: 20px;">
-                <h2 style="color:#0891b2;">DonghuaStream</h2>
-                <p>Gunakan kode berikut untuk menyelesaikan pendaftaran akun Anda:</p>
-                <p style="font-size: 32px; font-weight: 700; letter-spacing: 6px; color:#020617;">${code}</p>
-                <p style="color:#64748b; font-size: 13px;">Kode ini berlaku selama 10 menit. Jangan bagikan kode ini ke siapa pun.</p>
-              </div>
-            `,
+            service_id: serviceId,
+            template_id: templateId,
+            user_id: publicKey,
+            accessToken: privateKey,
+            template_params: {
+              to_email: email,
+              otp_code: code,
+            },
           }),
         });
 
