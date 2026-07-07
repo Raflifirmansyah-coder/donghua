@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DonghuaStream — Nonton Donghua Sub Indo</title>
 <link rel="stylesheet" href="style.css">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#020617">
+<link rel="icon" href="icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icon-192.png">
 </head>
 <body>
 
@@ -94,7 +98,14 @@
         </div>
         <div class="form-group">
           <label>Email</label>
-          <input type="email" id="registerEmail" placeholder="contoh: nama@gmail.com">
+          <div class="otp-row">
+            <input type="email" id="registerEmail" placeholder="contoh: nama@gmail.com">
+            <button type="button" class="btn-otp" id="sendOtpBtn" onclick="handleSendOtp()">Kirim OTP</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Kode OTP</label>
+          <input type="text" id="registerOtp" placeholder="Masukkan 6 digit kode dari email" maxlength="6" inputmode="numeric">
         </div>
         <div class="form-group">
           <label>Password</label>
