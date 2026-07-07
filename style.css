@@ -293,6 +293,24 @@ body {
   box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.15), 0 0 14px rgba(34, 211, 238, 0.35);
 }
 
+.otp-row { display: flex; gap: 8px; }
+.otp-row input { flex: 1; min-width: 0; }
+.btn-otp {
+  flex-shrink: 0;
+  padding: 0 14px;
+  border: 1px solid rgba(34, 211, 238, 0.4);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--cyan);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background .2s, color .2s;
+}
+.btn-otp:hover:not(:disabled) { background: rgba(34, 211, 238, 0.15); }
+.btn-otp:disabled { opacity: .6; cursor: not-allowed; color: var(--text-dim); border-color: rgba(148,163,184,0.25); }
+
 .btn-primary {
   width: 100%;
   padding: 12px;
