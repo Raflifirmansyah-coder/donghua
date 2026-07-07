@@ -23,6 +23,49 @@
  * ============================================================
  */
 
+const crypto = require("crypto");
+
+// ------------------------------------------------------------
+// Sistem token admin: password admin TIDAK PERNAH dikirim balik
+// ke client maupun disimpan di kode client. Setelah verifikasi
+// berhasil di server, server membuatkan "tiket" (token) yang
+// ditandatangani dengan kunci rahasia (ADMIN_SECRET) yang hanya
+// diketahui server. Client hanya menyimpan token ini.
+// ------------------------------------------------------------
+function signAdminToken(username) {
+  const secret = process.env.ADMIN_SECRET;
+  if (!secret) {
+    throw new Error("ADMIN_SECRET belum diatur di Environment Variables Vercel.");
+  }
+  const expiry = Date.now() + 1000 * 60 * 60 * 6; // token berlaku 6 jam
+  const payloadStr = `${username}:${expiry}`;
+  const payloadB64 = Buffer.from(payloadStr).toString("base64");
+  const signature = crypto.createHmac("sha256", secret).update(payloadB64).digest("hex");
+  return `${payloadB64}.${signature}`;
+}
+
+function verifyAdminToken(token) {
+  const secret = process.env.ADMIN_SECRET;
+  if (!secret || !token || typeof token !== "string") return false;
+
+  const parts = token.split(".");
+  if (parts.length !== 2) return false;
+  const [payloadB64, signature] = parts;
+
+  const expectedSig = crypto.createHmac("sha256", secret).update(payloadB64).digest("hex");
+  if (signature !== expectedSig) return false;
+
+  try {
+    const payloadStr = Buffer.from(payloadB64, "base64").toString("utf-8");
+    const [username, expiryStr] = payloadStr.split(":");
+    const expiry = parseInt(expiryStr, 10);
+    if (username !== "xiaoli") return false;
+    if (Date.now() > expiry) return false;
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
 // ------------------------------------------------------------
 // Helper: menjalankan query SQL ke Neon lewat HTTP endpoint /sql
 // ------------------------------------------------------------
@@ -95,6 +138,15 @@ async function initTables() {
       value TEXT
     );
   `);
+  await runQuery(`
+    CREATE TABLE IF NOT EXISTS otp_verifications (
+      id SERIAL PRIMARY KEY,
+      email TEXT NOT NULL,
+      code TEXT NOT NULL,
+      expires_at TIMESTAMP NOT NULL,
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+  `);
 }
 
 // ------------------------------------------------------------
@@ -102,7 +154,7 @@ async function initTables() {
 // server, selain proteksi di sisi client)
 // ------------------------------------------------------------
 function isAdminRequest(payload) {
-  return payload && payload.adminUser === "xiaoli" && payload.adminPass === "0507";
+  return payload && verifyAdminToken(payload.adminToken);
 }
 
 // ------------------------------------------------------------
@@ -124,11 +176,69 @@ module.exports = async (req, res) => {
     const payload = req.method === "GET" ? req.query : (req.body && req.body.payload) || {};
 
     switch (action) {
-      // ============= REGISTER USER BARU =============
+      // ============= KIRIM KODE OTP KE EMAIL (SEBELUM REGISTER) =============
+      case "sendOtp": {
+        const { email } = payload;
+        if (!email) {
+          return res.status(400).json({ error: "Email wajib diisi." });
+        }
+        if (!/^[^\s@]+@gmail\.com$/i.test(email)) {
+          return res.status(400).json({ error: "Email harus menggunakan format @gmail.com." });
+        }
+
+        const existingUser = await runQuery("SELECT id FROM users WHERE email = $1", [email]);
+        if (existingUser.length > 0) {
+          return res.status(400).json({ error: "Email ini sudah terdaftar. Silakan login." });
+        }
+
+        const resendKey = process.env.RESEND_API_KEY;
+        if (!resendKey) {
+          return res.status(500).json({ error: "RESEND_API_KEY belum diatur di Environment Variables Vercel." });
+        }
+
+        const code = Math.floor(100000 + Math.random() * 900000).toString();
+        const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+
+        await runQuery("DELETE FROM otp_verifications WHERE email = $1", [email]);
+        await runQuery(
+          "INSERT INTO otp_verifications (email, code, expires_at) VALUES ($1, $2, $3)",
+          [email, code, expiresAt]
+        );
+
+        const emailRes = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${resendKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            from: "DonghuaStream <onboarding@resend.dev>",
+            to: [email],
+            subject: "Kode OTP Pendaftaran DonghuaStream",
+            html: `
+              <div style="font-family: sans-serif; padding: 20px;">
+                <h2 style="color:#0891b2;">DonghuaStream</h2>
+                <p>Gunakan kode berikut untuk menyelesaikan pendaftaran akun Anda:</p>
+                <p style="font-size: 32px; font-weight: 700; letter-spacing: 6px; color:#020617;">${code}</p>
+                <p style="color:#64748b; font-size: 13px;">Kode ini berlaku selama 10 menit. Jangan bagikan kode ini ke siapa pun.</p>
+              </div>
+            `,
+          }),
+        });
+
+        if (!emailRes.ok) {
+          const errText = await emailRes.text();
+          return res.status(500).json({ error: "Gagal mengirim email OTP: " + errText });
+        }
+
+        return res.status(200).json({ success: true });
+      }
+
+      // ============= REGISTER USER BARU (WAJIB OTP VALID) =============
       case "register": {
-        const { username, password, email } = payload;
-        if (!username || !password || !email) {
-          return res.status(400).json({ error: "Username, email, dan password wajib diisi." });
+        const { username, password, email, otp } = payload;
+        if (!username || !password || !email || !otp) {
+          return res.status(400).json({ error: "Username, email, password, dan kode OTP wajib diisi." });
         }
         if (!/^[^\s@]+@gmail\.com$/i.test(email)) {
           return res.status(400).json({ error: "Email harus menggunakan format @gmail.com." });
@@ -136,31 +246,55 @@ module.exports = async (req, res) => {
         if (username === "xiaoli") {
           return res.status(400).json({ error: "Username tersebut tidak dapat digunakan." });
         }
+
+        const otpRows = await runQuery(
+          "SELECT id FROM otp_verifications WHERE email = $1 AND code = $2 AND expires_at > NOW() LIMIT 1",
+          [email, otp]
+        );
+        if (otpRows.length === 0) {
+          return res.status(400).json({ error: "Kode OTP salah atau sudah kedaluwarsa. Silakan kirim ulang." });
+        }
+
         const existing = await runQuery("SELECT id FROM users WHERE username = $1", [username]);
         if (existing.length > 0) {
           return res.status(400).json({ error: "Username sudah terdaftar. Silakan gunakan username lain." });
         }
+
         await runQuery("INSERT INTO users (username, password, email) VALUES ($1, $2, $3)", [username, password, email]);
+        await runQuery("DELETE FROM otp_verifications WHERE email = $1", [email]);
+
         return res.status(200).json({ success: true });
       }
 
-      // ============= LOGIN USER BIASA =============
+      // ============= LOGIN (ADMIN DIVERIFIKASI DI SERVER, USER BIASA DIVALIDASI KE NEON) =============
       case "login": {
         const { username, password, email } = payload;
-        if (!username || !password || !email) {
-          return res.status(400).json({ error: "Username, email, dan password wajib diisi." });
+        if (!username || !password) {
+          return res.status(400).json({ error: "Username dan password wajib diisi." });
+        }
+
+        // Verifikasi admin sepenuhnya di server. Kredensial admin
+        // tidak pernah dikirim balik atau disimpan di kode client.
+        if (username === "xiaoli" && password === "0507") {
+          const token = signAdminToken(username);
+          return res.status(200).json({ user: { username }, isAdmin: true, adminToken: token });
+        }
+
+        if (!email) {
+          return res.status(400).json({ error: "Email wajib diisi." });
         }
         if (!/^[^\s@]+@gmail\.com$/i.test(email)) {
           return res.status(400).json({ error: "Email harus menggunakan format @gmail.com." });
         }
+
         const rows = await runQuery(
           "SELECT id, username, email FROM users WHERE username = $1 AND password = $2 AND email = $3 LIMIT 1",
           [username, password, email]
         );
         if (rows.length === 0) {
-          return res.status(200).json({ user: null });
+          return res.status(200).json({ user: null, isAdmin: false });
         }
-        return res.status(200).json({ user: rows[0] });
+        return res.status(200).json({ user: rows[0], isAdmin: false });
       }
 
       // ============= AMBIL SEMUA USER (ADMIN ONLY) =============
