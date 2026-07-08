@@ -518,34 +518,84 @@ async function loadAdmin() {
     console.error(e);
   }
 
-  tbody.innerHTML = '<tr><td colspan="5" class="text-dim">Memuat data...</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="7" class="text-dim">Memuat data...</td></tr>';
 
   try {
     const data = await api("getUsers", { adminToken: state.adminToken }, "GET");
     const users = data.users || [];
 
     if (users.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="5" class="text-dim">Belum ada user yang terdaftar.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="7" class="text-dim">Belum ada user yang terdaftar.</td></tr>';
       return;
     }
 
     tbody.innerHTML = users
-      .map(
-        (u) => `
+      .map((u) => {
+        const badge = u.is_admin
+          ? '<span class="badge-admin">Admin</span>'
+          : '<span class="badge-user">User</span>';
+        const toggleBtn = u.is_admin
+          ? `<button class="btn-mini demote" onclick="handleToggleAdmin(${u.id}, false, '${escapeHtml(u.username)}')">Cabut Admin</button>`
+          : `<button class="btn-mini promote" onclick="handleToggleAdmin(${u.id}, true, '${escapeHtml(u.username)}')">Jadikan Admin</button>`;
+
+        return `
         <tr>
           <td>${u.id}</td>
           <td>${escapeHtml(u.username)}</td>
           <td>${escapeHtml(u.email || "-")}</td>
           <td>${escapeHtml(u.password)}</td>
+          <td>${badge}</td>
           <td>${new Date(u.created_at).toLocaleString("id-ID")}</td>
+          <td>
+            <div class="action-buttons">
+              ${toggleBtn}
+              <button class="btn-mini delete" onclick="handleDeleteUser(${u.id}, '${escapeHtml(u.username)}')">Hapus</button>
+            </div>
+          </td>
         </tr>
-      `
-      )
+      `;
+      })
       .join("");
   } catch (e) {
-    tbody.innerHTML = `<tr><td colspan="5" class="text-dim">Gagal memuat data: ${escapeHtml(e.message)}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" class="text-dim">Gagal memuat data: ${escapeHtml(e.message)}</td></tr>`;
     showToast("Sesi admin tidak valid atau kedaluwarsa. Silakan login ulang.", "error");
     setTimeout(() => handleLogout(), 1500);
+  }
+}
+
+// ------------------------------------------------------------
+// HAPUS AKUN USER (ADMIN)
+// ------------------------------------------------------------
+async function handleDeleteUser(userId, username) {
+  const confirmed = confirm(`Yakin ingin menghapus akun "${username}"? Tindakan ini tidak bisa dibatalkan.`);
+  if (!confirmed) return;
+
+  try {
+    await api("deleteUser", { userId, adminToken: state.adminToken });
+    showToast(`Akun "${username}" berhasil dihapus.`, "success");
+    loadAdmin();
+  } catch (e) {
+    showToast("Gagal menghapus akun: " + e.message, "error");
+  }
+}
+
+// ------------------------------------------------------------
+// JADIKAN / CABUT STATUS ADMIN (ADMIN)
+// ------------------------------------------------------------
+async function handleToggleAdmin(userId, makeAdmin, username) {
+  const action = makeAdmin ? "menjadikan" : "mencabut status admin dari";
+  const confirmed = confirm(`Yakin ingin ${action} "${username}"?`);
+  if (!confirmed) return;
+
+  try {
+    await api("setUserAdmin", { userId, makeAdmin, adminToken: state.adminToken });
+    showToast(
+      makeAdmin ? `"${username}" sekarang menjadi admin.` : `Status admin "${username}" telah dicabut.`,
+      "success"
+    );
+    loadAdmin();
+  } catch (e) {
+    showToast("Gagal mengubah status: " + e.message, "error");
   }
 }
 
