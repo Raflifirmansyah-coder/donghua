@@ -534,37 +534,68 @@ tbody tr:hover { background: rgba(34, 211, 238, 0.05); }
   animation: fadeIn .2s ease;
 }
 .center-notice-box {
+  position: relative;
+  overflow: hidden;
   background: var(--glass-bg);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-  border: 1px solid var(--glass-border);
-  border-radius: 18px;
-  padding: 32px 40px;
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 20px;
+  padding: 36px 44px;
   text-align: center;
   min-width: 260px;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+  box-shadow:
+    0 25px 60px rgba(0, 0, 0, 0.55),
+    0 8px 20px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15),
+    inset 0 0 40px rgba(34, 211, 238, 0.06);
   animation: noticePop .35s cubic-bezier(.34,1.56,.64,1);
 }
-.center-notice.success .center-notice-box { border-color: rgba(34, 211, 238, 0.5); }
-.center-notice.error .center-notice-box { border-color: rgba(248, 113, 113, 0.5); }
+.center-notice-box::before {
+  content: "";
+  position: absolute;
+  top: 0; left: -20%;
+  width: 60%; height: 100%;
+  background: linear-gradient(115deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0) 55%);
+  pointer-events: none;
+}
+.center-notice.success .center-notice-box { border-color: rgba(34, 211, 238, 0.45); box-shadow: 0 25px 60px rgba(0,0,0,.55), 0 8px 20px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.15), 0 0 45px rgba(34,211,238,.18); }
+.center-notice.error .center-notice-box { border-color: rgba(248, 113, 113, 0.45); box-shadow: 0 25px 60px rgba(0,0,0,.55), 0 8px 20px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.15), 0 0 45px rgba(248,113,113,.18); }
 .center-notice-icon {
-  width: 56px; height: 56px;
-  margin: 0 auto 16px;
+  width: 60px; height: 60px;
+  margin: 0 auto 18px;
   border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   font-size: 28px; font-weight: 900;
+  box-shadow: inset 0 1px 2px rgba(255,255,255,.3), 0 4px 14px rgba(0,0,0,.3);
 }
-.center-notice.success .center-notice-icon { background: rgba(34,211,238,.18); color: var(--cyan); }
-.center-notice.error .center-notice-icon { background: rgba(248,113,113,.18); color: var(--danger); }
-.center-notice-text { color: var(--text); font-size: 16px; font-weight: 600; }
+.center-notice.success .center-notice-icon { background: radial-gradient(circle at 35% 30%, rgba(34,211,238,.4), rgba(34,211,238,.15)); color: var(--cyan); }
+.center-notice.error .center-notice-icon { background: radial-gradient(circle at 35% 30%, rgba(248,113,113,.4), rgba(248,113,113,.15)); color: var(--danger); }
+.center-notice-text { position: relative; color: var(--text); font-size: 16px; font-weight: 600; }
 @keyframes noticePop {
   0% { transform: scale(.7); opacity: 0; }
   100% { transform: scale(1); opacity: 1; }
 }
 .confirm-box { min-width: 300px; max-width: 380px; }
-.confirm-box .center-notice-text { margin-bottom: 20px; font-size: 15px; }
-.confirm-modal-actions { display: flex; gap: 10px; justify-content: center; }
-.confirm-modal-actions .btn-mini { padding: 9px 20px; font-size: 13px; }
+.confirm-box .center-notice-text { margin-bottom: 22px; font-size: 15px; }
+.confirm-modal-actions { position: relative; display: flex; gap: 10px; justify-content: center; }
+.confirm-modal-actions .btn-mini {
+  padding: 10px 22px;
+  font-size: 13px;
+  border-radius: 10px;
+  box-shadow: 0 4px 14px rgba(0,0,0,.25);
+}
+.confirm-modal-actions .btn-mini.promote {
+  background: linear-gradient(120deg, var(--cyan), var(--blue));
+  color: #001018;
+  border: none;
+  font-weight: 700;
+  box-shadow: 0 4px 16px rgba(34,211,238,.35);
+}
+.confirm-modal-actions .btn-mini.promote:hover { box-shadow: 0 6px 22px rgba(34,211,238,.5); transform: translateY(-1px); }
+.confirm-modal-actions .btn-mini.demote {
+  background: rgba(255,255,255,0.04);
+}
 
 .toast {
   display: flex;
