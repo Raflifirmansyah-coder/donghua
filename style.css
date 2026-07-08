@@ -81,9 +81,19 @@ body {
   vertical-align: middle;
 }
 .verified-badge.admin-badge {
-  background: radial-gradient(circle at 35% 28%, rgba(255,255,255,.5), rgba(0,0,0,0) 42%), #0a0a0a;
+  position: relative;
+  overflow: hidden;
+  background-color: #0a0a0a;
+  background-image: linear-gradient(120deg, transparent 30%, rgba(255,255,255,0.95) 48%, transparent 66%);
+  background-size: 300% 300%;
+  background-position: 200% 0;
   color: #ffffff;
   filter: drop-shadow(0 0 1.4px #ffffff) drop-shadow(0 0 0.6px #ffffff);
+  animation: badgeShine 2.2s ease-in-out infinite;
+}
+@keyframes badgeShine {
+  0%   { background-position: 200% 0%; }
+  100% { background-position: -100% 0%; }
 }
 
 .comment-avatar {
