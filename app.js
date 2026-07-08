@@ -79,8 +79,10 @@ function avatarHtml(avatar, username) {
   return escapeHtml(initial);
 }
 
-function verifiedBadgeHtml(isVerified) {
-  return isVerified ? '<span class="verified-badge" title="Akun terverifikasi">✓</span>' : "";
+function verifiedBadgeHtml(isVerified, isAdmin) {
+  if (!isVerified) return "";
+  const cls = isAdmin ? "verified-badge admin-badge" : "verified-badge";
+  return `<span class="${cls}" title="Akun terverifikasi">✓</span>`;
 }
 
 // ------------------------------------------------------------
@@ -146,7 +148,10 @@ function renderNavAvatar() {
   if (el) el.innerHTML = avatarHtml(state.avatar, state.currentUser);
 
   const badge = document.getElementById("navVerifiedBadge");
-  if (badge) badge.classList.toggle("hidden", !state.isVerified);
+  if (badge) {
+    badge.classList.toggle("hidden", !state.isVerified);
+    badge.classList.toggle("admin-badge", state.isAdmin);
+  }
 }
 
 // ------------------------------------------------------------
@@ -631,7 +636,7 @@ async function loadComments(videoId) {
         <div class="comment-item">
           <div class="comment-avatar">${avatarHtml(c.avatar, c.username)}</div>
           <div class="comment-body">
-            <strong>${escapeHtml(c.username)}</strong>${verifiedBadgeHtml(c.is_verified)}
+            <strong>${escapeHtml(c.username)}</strong>${verifiedBadgeHtml(c.is_verified, c.is_admin)}
             <p>${escapeHtml(c.comment)}</p>
           </div>
         </div>
