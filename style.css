@@ -71,11 +71,11 @@ body {
 .verified-badge {
   display: inline-flex;
   align-items: center; justify-content: center;
-  width: 15px; height: 15px;
+  width: 16px; height: 16px;
   margin-left: 5px;
-  border-radius: 50%;
-  background: var(--cyan);
-  color: #001018;
+  clip-path: polygon(50.0% 0.0%, 59.8% 13.3%, 75.0% 6.7%, 76.9% 23.1%, 93.3% 25.0%, 86.7% 40.2%, 100.0% 50.0%, 86.7% 59.8%, 93.3% 75.0%, 76.9% 76.9%, 75.0% 93.3%, 59.8% 86.7%, 50.0% 100.0%, 40.2% 86.7%, 25.0% 93.3%, 23.1% 76.9%, 6.7% 75.0%, 13.3% 59.8%, 0.0% 50.0%, 13.3% 40.2%, 6.7% 25.0%, 23.1% 23.1%, 25.0% 6.7%, 40.2% 13.3%);
+  background: #22c55e;
+  color: #ffffff;
   font-size: 10px;
   font-weight: 900;
   vertical-align: middle;
@@ -518,6 +518,48 @@ tbody tr:hover { background: rgba(34, 211, 238, 0.05); }
   flex-direction: column;
   gap: 12px;
   max-width: 340px;
+}
+
+/* ============= NOTIFIKASI TENGAH LAYAR (AKSI ADMIN) ============= */
+.center-notice {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(2, 6, 23, 0.55);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  animation: fadeIn .2s ease;
+}
+.center-notice-box {
+  background: var(--glass-bg);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid var(--glass-border);
+  border-radius: 18px;
+  padding: 32px 40px;
+  text-align: center;
+  min-width: 260px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+  animation: noticePop .35s cubic-bezier(.34,1.56,.64,1);
+}
+.center-notice.success .center-notice-box { border-color: rgba(34, 211, 238, 0.5); }
+.center-notice.error .center-notice-box { border-color: rgba(248, 113, 113, 0.5); }
+.center-notice-icon {
+  width: 56px; height: 56px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 28px; font-weight: 900;
+}
+.center-notice.success .center-notice-icon { background: rgba(34,211,238,.18); color: var(--cyan); }
+.center-notice.error .center-notice-icon { background: rgba(248,113,113,.18); color: var(--danger); }
+.center-notice-text { color: var(--text); font-size: 16px; font-weight: 600; }
+@keyframes noticePop {
+  0% { transform: scale(.7); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
 }
 
 .toast {
