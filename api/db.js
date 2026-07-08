@@ -32,38 +32,39 @@ const crypto = require("crypto");
 // ditandatangani dengan kunci rahasia (ADMIN_SECRET) yang hanya
 // diketahui server. Client hanya menyimpan token ini.
 // ------------------------------------------------------------
-function signAdminToken(username) {
+function signToken(username, role) {
   const secret = process.env.ADMIN_SECRET;
   if (!secret) {
     throw new Error("ADMIN_SECRET belum diatur di Environment Variables Vercel.");
   }
   const expiry = Date.now() + 1000 * 60 * 60 * 6; // token berlaku 6 jam
-  const payloadStr = `${username}:${expiry}`;
+  const payloadStr = `${username}:${role}:${expiry}`;
   const payloadB64 = Buffer.from(payloadStr).toString("base64");
   const signature = crypto.createHmac("sha256", secret).update(payloadB64).digest("hex");
   return `${payloadB64}.${signature}`;
 }
 
-function verifyAdminToken(token) {
+function verifyToken(token, requiredRole) {
   const secret = process.env.ADMIN_SECRET;
-  if (!secret || !token || typeof token !== "string") return false;
+  if (!secret || !token || typeof token !== "string") return null;
 
   const parts = token.split(".");
-  if (parts.length !== 2) return false;
+  if (parts.length !== 2) return null;
   const [payloadB64, signature] = parts;
 
   const expectedSig = crypto.createHmac("sha256", secret).update(payloadB64).digest("hex");
-  if (signature !== expectedSig) return false;
+  if (signature !== expectedSig) return null;
 
   try {
     const payloadStr = Buffer.from(payloadB64, "base64").toString("utf-8");
-    const [username, expiryStr] = payloadStr.split(":");
+    const [username, role, expiryStr] = payloadStr.split(":");
     const expiry = parseInt(expiryStr, 10);
-    if (!username) return false;
-    if (Date.now() > expiry) return false;
-    return true;
+    if (!username || !role) return null;
+    if (Date.now() > expiry) return null;
+    if (requiredRole && role !== requiredRole) return null;
+    return { username, role };
   } catch (e) {
-    return false;
+    return null;
   }
 }
 // ------------------------------------------------------------
@@ -127,6 +128,12 @@ async function initTables() {
     ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT FALSE;
   `);
   await runQuery(`
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar TEXT;
+  `);
+  await runQuery(`
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT FALSE;
+  `);
+  await runQuery(`
     CREATE TABLE IF NOT EXISTS comments (
       id SERIAL PRIMARY KEY,
       video_id TEXT NOT NULL,
@@ -157,7 +164,7 @@ async function initTables() {
 // server, selain proteksi di sisi client)
 // ------------------------------------------------------------
 function isAdminRequest(payload) {
-  return payload && verifyAdminToken(payload.adminToken);
+  return !!(payload && verifyToken(payload.adminToken, "admin"));
 }
 
 // ------------------------------------------------------------
@@ -266,7 +273,8 @@ module.exports = async (req, res) => {
         await runQuery("INSERT INTO users (username, password, email) VALUES ($1, $2, $3)", [username, password, email]);
         await runQuery("DELETE FROM otp_verifications WHERE email = $1", [email]);
 
-        return res.status(200).json({ success: true });
+        const userToken = signToken(username, "user");
+        return res.status(200).json({ success: true, userToken });
       }
 
       // ============= LOGIN (ADMIN DIVERIFIKASI DI SERVER, USER BIASA DIVALIDASI KE NEON) =============
@@ -279,8 +287,16 @@ module.exports = async (req, res) => {
         // Verifikasi admin sepenuhnya di server. Kredensial admin
         // tidak pernah dikirim balik atau disimpan di kode client.
         if (username === "xiaoli" && password === "0507") {
-          const token = signAdminToken(username);
-          return res.status(200).json({ user: { username }, isAdmin: true, adminToken: token });
+          const avatarRows = await runQuery("SELECT value FROM settings WHERE key = 'admin_avatar' LIMIT 1");
+          const avatar = avatarRows.length > 0 ? avatarRows[0].value : null;
+          const adminToken = signToken(username, "admin");
+          const userToken = signToken(username, "user");
+          return res.status(200).json({
+            user: { username, avatar, is_verified: true },
+            isAdmin: true,
+            adminToken,
+            userToken,
+          });
         }
 
         if (!email) {
@@ -291,17 +307,20 @@ module.exports = async (req, res) => {
         }
 
         const rows = await runQuery(
-          "SELECT id, username, email, is_admin FROM users WHERE username = $1 AND password = $2 AND email = $3 LIMIT 1",
+          "SELECT id, username, email, avatar, is_admin, is_verified FROM users WHERE username = $1 AND password = $2 AND email = $3 LIMIT 1",
           [username, password, email]
         );
         if (rows.length === 0) {
           return res.status(200).json({ user: null, isAdmin: false });
         }
+
+        const userToken = signToken(rows[0].username, "user");
+
         if (rows[0].is_admin) {
-          const token = signAdminToken(rows[0].username);
-          return res.status(200).json({ user: rows[0], isAdmin: true, adminToken: token });
+          const adminToken = signToken(rows[0].username, "admin");
+          return res.status(200).json({ user: rows[0], isAdmin: true, adminToken, userToken });
         }
-        return res.status(200).json({ user: rows[0], isAdmin: false });
+        return res.status(200).json({ user: rows[0], isAdmin: false, userToken });
       }
 
       // ============= AMBIL SEMUA USER (ADMIN ONLY) =============
@@ -310,9 +329,48 @@ module.exports = async (req, res) => {
           return res.status(403).json({ error: "Akses ditolak. Hanya admin yang dapat melihat data ini." });
         }
         const rows = await runQuery(
-          "SELECT id, username, email, password, is_admin, created_at FROM users ORDER BY id DESC"
+          "SELECT id, username, email, password, is_admin, is_verified, avatar, created_at FROM users ORDER BY id DESC"
         );
         return res.status(200).json({ users: rows });
+      }
+
+      // ============= UPDATE FOTO PROFIL (USER SENDIRI, VIA TOKEN) =============
+      case "updateAvatar": {
+        const verified = verifyToken(payload.userToken, "user");
+        if (!verified) {
+          return res.status(403).json({ error: "Sesi tidak valid atau kedaluwarsa. Silakan login ulang." });
+        }
+        const { avatar } = payload;
+        if (!avatar) {
+          return res.status(400).json({ error: "Foto profil wajib diisi." });
+        }
+        if (avatar.length > 700000) {
+          return res.status(400).json({ error: "Ukuran foto terlalu besar. Gunakan foto yang lebih kecil." });
+        }
+
+        if (verified.username === "xiaoli") {
+          await runQuery(
+            `INSERT INTO settings (key, value) VALUES ('admin_avatar', $1)
+             ON CONFLICT (key) DO UPDATE SET value = $1`,
+            [avatar]
+          );
+        } else {
+          await runQuery("UPDATE users SET avatar = $1 WHERE username = $2", [avatar, verified.username]);
+        }
+        return res.status(200).json({ success: true, avatar });
+      }
+
+      // ============= UBAH STATUS VERIFIKASI USER (ADMIN ONLY) =============
+      case "setUserVerified": {
+        if (!isAdminRequest(payload)) {
+          return res.status(403).json({ error: "Akses ditolak. Hanya admin yang dapat mengubah status ini." });
+        }
+        const { userId, verify } = payload;
+        if (!userId || typeof verify !== "boolean") {
+          return res.status(400).json({ error: "Data tidak lengkap." });
+        }
+        await runQuery("UPDATE users SET is_verified = $1 WHERE id = $2", [verify, userId]);
+        return res.status(200).json({ success: true });
       }
 
       // ============= HAPUS AKUN USER (ADMIN ONLY) =============
@@ -371,7 +429,11 @@ module.exports = async (req, res) => {
           return res.status(400).json({ error: "videoId wajib disertakan." });
         }
         const rows = await runQuery(
-          "SELECT username, comment, created_at FROM comments WHERE video_id = $1 ORDER BY created_at ASC",
+          `SELECT c.username, c.comment, c.created_at, u.avatar, u.is_verified
+           FROM comments c
+           LEFT JOIN users u ON u.username = c.username
+           WHERE c.video_id = $1
+           ORDER BY c.created_at ASC`,
           [videoId]
         );
         return res.status(200).json({ comments: rows });
