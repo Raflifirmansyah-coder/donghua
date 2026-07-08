@@ -161,8 +161,12 @@ function renderNavAvatar() {
 // ------------------------------------------------------------
 let confirmModalResolver = null;
 
-function showConfirmModal(message) {
+function showConfirmModal(message, title = "Konfirmasi", danger = false) {
+  document.getElementById("confirmModalTitle").textContent = title;
   document.getElementById("confirmModalText").textContent = message;
+  const icon = document.getElementById("confirmModalIcon");
+  icon.textContent = danger ? "🗑" : "⚠";
+  icon.classList.toggle("danger", danger);
   document.getElementById("confirmModal").classList.remove("hidden");
   return new Promise((resolve) => {
     confirmModalResolver = resolve;
@@ -737,7 +741,11 @@ async function loadAdmin() {
 // HAPUS AKUN USER (ADMIN)
 // ------------------------------------------------------------
 async function handleDeleteUser(userId, username) {
-  const confirmed = await showConfirmModal(`Yakin ingin menghapus akun "${username}"? Tindakan ini tidak bisa dibatalkan.`);
+  const confirmed = await showConfirmModal(
+    `Yakin ingin menghapus akun "${username}"? Tindakan ini tidak bisa dibatalkan.`,
+    "Hapus Akun?",
+    true
+  );
   if (!confirmed) return;
 
   try {
@@ -754,7 +762,7 @@ async function handleDeleteUser(userId, username) {
 // ------------------------------------------------------------
 async function handleToggleAdmin(userId, makeAdmin, username) {
   const action = makeAdmin ? "menjadikan" : "mencabut status admin dari";
-  const confirmed = await showConfirmModal(`Yakin ingin ${action} "${username}"?`);
+  const confirmed = await showConfirmModal(`Yakin ingin ${action} "${username}"?`, makeAdmin ? "Jadikan Admin?" : "Cabut Status Admin?");
   if (!confirmed) return;
 
   try {
@@ -774,7 +782,7 @@ async function handleToggleAdmin(userId, makeAdmin, username) {
 // ------------------------------------------------------------
 async function handleToggleVerified(userId, verify, username) {
   const action = verify ? "memberi centang terverifikasi kepada" : "mencabut centang terverifikasi dari";
-  const confirmed = await showConfirmModal(`Yakin ingin ${action} "${username}"?`);
+  const confirmed = await showConfirmModal(`Yakin ingin ${action} "${username}"?`, verify ? "Verifikasi Akun?" : "Cabut Verifikasi?");
   if (!confirmed) return;
 
   try {
