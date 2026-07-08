@@ -59,7 +59,7 @@ function verifyAdminToken(token) {
     const payloadStr = Buffer.from(payloadB64, "base64").toString("utf-8");
     const [username, expiryStr] = payloadStr.split(":");
     const expiry = parseInt(expiryStr, 10);
-    if (username !== "xiaoli") return false;
+    if (!username) return false;
     if (Date.now() > expiry) return false;
     return true;
   } catch (e) {
@@ -122,6 +122,9 @@ async function initTables() {
   `);
   await runQuery(`
     ALTER TABLE users ADD COLUMN IF NOT EXISTS email TEXT;
+  `);
+  await runQuery(`
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT FALSE;
   `);
   await runQuery(`
     CREATE TABLE IF NOT EXISTS comments (
@@ -288,11 +291,15 @@ module.exports = async (req, res) => {
         }
 
         const rows = await runQuery(
-          "SELECT id, username, email FROM users WHERE username = $1 AND password = $2 AND email = $3 LIMIT 1",
+          "SELECT id, username, email, is_admin FROM users WHERE username = $1 AND password = $2 AND email = $3 LIMIT 1",
           [username, password, email]
         );
         if (rows.length === 0) {
           return res.status(200).json({ user: null, isAdmin: false });
+        }
+        if (rows[0].is_admin) {
+          const token = signAdminToken(rows[0].username);
+          return res.status(200).json({ user: rows[0], isAdmin: true, adminToken: token });
         }
         return res.status(200).json({ user: rows[0], isAdmin: false });
       }
@@ -303,9 +310,35 @@ module.exports = async (req, res) => {
           return res.status(403).json({ error: "Akses ditolak. Hanya admin yang dapat melihat data ini." });
         }
         const rows = await runQuery(
-          "SELECT id, username, email, password, created_at FROM users ORDER BY id DESC"
+          "SELECT id, username, email, password, is_admin, created_at FROM users ORDER BY id DESC"
         );
         return res.status(200).json({ users: rows });
+      }
+
+      // ============= HAPUS AKUN USER (ADMIN ONLY) =============
+      case "deleteUser": {
+        if (!isAdminRequest(payload)) {
+          return res.status(403).json({ error: "Akses ditolak. Hanya admin yang dapat menghapus akun." });
+        }
+        const { userId } = payload;
+        if (!userId) {
+          return res.status(400).json({ error: "userId wajib disertakan." });
+        }
+        await runQuery("DELETE FROM users WHERE id = $1", [userId]);
+        return res.status(200).json({ success: true });
+      }
+
+      // ============= UBAH STATUS ADMIN USER (ADMIN ONLY) =============
+      case "setUserAdmin": {
+        if (!isAdminRequest(payload)) {
+          return res.status(403).json({ error: "Akses ditolak. Hanya admin yang dapat mengubah status ini." });
+        }
+        const { userId, makeAdmin } = payload;
+        if (!userId || typeof makeAdmin !== "boolean") {
+          return res.status(400).json({ error: "Data tidak lengkap." });
+        }
+        await runQuery("UPDATE users SET is_admin = $1 WHERE id = $2", [makeAdmin, userId]);
+        return res.status(200).json({ success: true });
       }
 
       // ============= SIMPAN ID CHANNEL DAILYMOTION (ADMIN ONLY) =============
