@@ -18,7 +18,11 @@
     <div class="nav-links">
       <a onclick="openHome()">Beranda</a>
       <a id="navAdminLink" class="hidden" onclick="openAdmin()">Dashboard Admin</a>
-      <span class="nav-user">Halo, <strong id="navUsername"></strong></span>
+      <div class="nav-profile" onclick="triggerAvatarPicker()" title="Klik untuk ganti foto profil">
+        <div id="navAvatar" class="avatar-circle"></div>
+        <span class="nav-user">Halo, <strong id="navUsername"></strong><span id="navVerifiedBadge" class="verified-badge hidden" title="Akun terverifikasi">✓</span></span>
+      </div>
+      <input type="file" id="avatarFileInput" accept="image/*" class="hidden" onchange="handleAvatarSelected(event)">
       <button class="btn-logout" onclick="handleLogout()">Keluar</button>
     </div>
   </nav>
@@ -174,16 +178,18 @@
             <thead>
               <tr>
                 <th>ID</th>
+                <th>Foto</th>
                 <th>Username</th>
                 <th>Email</th>
                 <th>Password</th>
                 <th>Admin</th>
+                <th>Verifikasi</th>
                 <th>Terdaftar</th>
                 <th>Aksi</th>
               </tr>
             </thead>
             <tbody id="usersTableBody">
-              <tr><td colspan="7" class="text-dim">Memuat data...</td></tr>
+              <tr><td colspan="9" class="text-dim">Memuat data...</td></tr>
             </tbody>
           </table>
         </div>
