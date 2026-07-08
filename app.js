@@ -21,7 +21,10 @@ const POLL_INTERVAL_MS = 15000; // sinkronisasi otomatis tiap 15 detik
 const state = {
   currentUser: null,
   isAdmin: false,
+  isVerified: false,
   adminToken: null,
+  userToken: null,
+  avatar: null,
   currentVideoId: null,
   dailymotionId: null,
   pollHandle: null,
@@ -62,6 +65,88 @@ function escapeHtml(str) {
 
 function isGmail(email) {
   return /^[^\s@]+@gmail\.com$/i.test(email);
+}
+
+// ------------------------------------------------------------
+// Render avatar: pakai foto kalau ada, kalau tidak tampilkan
+// inisial huruf pertama username sebagai fallback
+// ------------------------------------------------------------
+function avatarHtml(avatar, username) {
+  if (avatar) {
+    return `<img src="${avatar}" alt="${escapeHtml(username || "")}">`;
+  }
+  const initial = (username || "?").trim().charAt(0).toUpperCase();
+  return escapeHtml(initial);
+}
+
+function verifiedBadgeHtml(isVerified) {
+  return isVerified ? '<span class="verified-badge" title="Akun terverifikasi">✓</span>' : "";
+}
+
+// ------------------------------------------------------------
+// UPLOAD & RESIZE FOTO PROFIL (dikompres di browser sebelum
+// dikirim, supaya tetap kecil dan hemat kuota database)
+// ------------------------------------------------------------
+function triggerAvatarPicker() {
+  if (!state.userToken) {
+    showToast("Sesi kamu tidak valid. Silakan login ulang.", "error");
+    return;
+  }
+  document.getElementById("avatarFileInput").click();
+}
+
+function handleAvatarSelected(event) {
+  const file = event.target.files[0];
+  event.target.value = ""; // reset supaya bisa pilih file yang sama lagi nanti
+  if (!file) return;
+
+  if (!file.type.startsWith("image/")) {
+    showToast("File harus berupa gambar.", "error");
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = new Image();
+    img.onload = () => {
+      const size = 160; // ukuran akhir avatar (persegi)
+      const canvas = document.createElement("canvas");
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext("2d");
+
+      // Crop tengah gambar jadi persegi sebelum di-resize
+      const minSide = Math.min(img.width, img.height);
+      const sx = (img.width - minSide) / 2;
+      const sy = (img.height - minSide) / 2;
+      ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, size, size);
+
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.82);
+      uploadAvatar(dataUrl);
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+async function uploadAvatar(dataUrl) {
+  try {
+    showToast("Mengunggah foto profil...", "success", 2000);
+    await api("updateAvatar", { userToken: state.userToken, avatar: dataUrl });
+    state.avatar = dataUrl;
+    renderNavAvatar();
+    showToast("Foto profil berhasil diperbarui!", "success");
+  } catch (e) {
+    showToast("Gagal mengunggah foto: " + e.message, "error");
+  }
+}
+
+function renderNavAvatar() {
+  const el = document.getElementById("navAvatar");
+  if (el) el.innerHTML = avatarHtml(state.avatar, state.currentUser);
+
+  const badge = document.getElementById("navVerifiedBadge");
+  if (badge) badge.classList.toggle("hidden", !state.isVerified);
 }
 
 // ------------------------------------------------------------
@@ -217,14 +302,20 @@ async function handleRegister() {
   }
 
   try {
-    await api("register", { username, email, password, otp });
+    const data = await api("register", { username, email, password, otp });
 
     triggerSuccessPulse(card);
     showToast(`Pendaftaran berhasil! Selamat datang, ${username} 🎉`, "success");
 
     state.currentUser = username;
     state.isAdmin = false;
-    sessionStorage.setItem("donghua_session", JSON.stringify({ username, isAdmin: false }));
+    state.isVerified = false;
+    state.avatar = null;
+    state.userToken = data.userToken || null;
+    sessionStorage.setItem(
+      "donghua_session",
+      JSON.stringify({ username, isAdmin: false, isVerified: false, avatar: null, userToken: state.userToken })
+    );
 
     setTimeout(() => enterApp(), 700);
   } catch (e) {
@@ -290,10 +381,20 @@ async function handleLogin() {
 
       state.currentUser = data.user.username;
       state.isAdmin = true;
+      state.isVerified = !!data.user.is_verified;
+      state.avatar = data.user.avatar || null;
       state.adminToken = data.adminToken;
+      state.userToken = data.userToken;
       sessionStorage.setItem(
         "donghua_session",
-        JSON.stringify({ username: data.user.username, isAdmin: true, adminToken: data.adminToken })
+        JSON.stringify({
+          username: data.user.username,
+          isAdmin: true,
+          isVerified: state.isVerified,
+          avatar: state.avatar,
+          adminToken: data.adminToken,
+          userToken: data.userToken,
+        })
       );
 
       setTimeout(() => {
@@ -313,8 +414,20 @@ async function handleLogin() {
 
     state.currentUser = data.user.username;
     state.isAdmin = false;
+    state.isVerified = !!data.user.is_verified;
+    state.avatar = data.user.avatar || null;
     state.adminToken = null;
-    sessionStorage.setItem("donghua_session", JSON.stringify({ username: data.user.username, isAdmin: false }));
+    state.userToken = data.userToken;
+    sessionStorage.setItem(
+      "donghua_session",
+      JSON.stringify({
+        username: data.user.username,
+        isAdmin: false,
+        isVerified: state.isVerified,
+        avatar: state.avatar,
+        userToken: data.userToken,
+      })
+    );
 
     setTimeout(() => enterApp(), 700);
   } catch (e) {
@@ -327,7 +440,10 @@ async function handleLogin() {
 function handleLogout() {
   state.currentUser = null;
   state.isAdmin = false;
+  state.isVerified = false;
+  state.avatar = null;
   state.adminToken = null;
+  state.userToken = null;
   state.currentVideoId = null;
   if (state.pollHandle) clearInterval(state.pollHandle);
   sessionStorage.removeItem("donghua_session");
@@ -346,6 +462,7 @@ function enterApp() {
   document.getElementById("navbar").classList.remove("hidden");
   document.getElementById("navUsername").textContent = state.currentUser;
   document.getElementById("navAdminLink").classList.toggle("hidden", !state.isAdmin);
+  renderNavAvatar();
   openHome();
 }
 
@@ -468,8 +585,11 @@ async function loadComments(videoId) {
       .map(
         (c) => `
         <div class="comment-item">
-          <strong>${escapeHtml(c.username)}</strong>
-          <p>${escapeHtml(c.comment)}</p>
+          <div class="comment-avatar">${avatarHtml(c.avatar, c.username)}</div>
+          <div class="comment-body">
+            <strong>${escapeHtml(c.username)}</strong>${verifiedBadgeHtml(c.is_verified)}
+            <p>${escapeHtml(c.comment)}</p>
+          </div>
         </div>
       `
       )
@@ -518,37 +638,47 @@ async function loadAdmin() {
     console.error(e);
   }
 
-  tbody.innerHTML = '<tr><td colspan="7" class="text-dim">Memuat data...</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="9" class="text-dim">Memuat data...</td></tr>';
 
   try {
     const data = await api("getUsers", { adminToken: state.adminToken }, "GET");
     const users = data.users || [];
 
     if (users.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="7" class="text-dim">Belum ada user yang terdaftar.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="9" class="text-dim">Belum ada user yang terdaftar.</td></tr>';
       return;
     }
 
     tbody.innerHTML = users
       .map((u) => {
-        const badge = u.is_admin
+        const adminBadge = u.is_admin
           ? '<span class="badge-admin">Admin</span>'
           : '<span class="badge-user">User</span>';
-        const toggleBtn = u.is_admin
+        const adminToggleBtn = u.is_admin
           ? `<button class="btn-mini demote" onclick="handleToggleAdmin(${u.id}, false, '${escapeHtml(u.username)}')">Cabut Admin</button>`
           : `<button class="btn-mini promote" onclick="handleToggleAdmin(${u.id}, true, '${escapeHtml(u.username)}')">Jadikan Admin</button>`;
+
+        const verifiedBadge = u.is_verified
+          ? '<span class="badge-admin">✓ Terverifikasi</span>'
+          : '<span class="badge-user">Belum</span>';
+        const verifyToggleBtn = u.is_verified
+          ? `<button class="btn-mini demote" onclick="handleToggleVerified(${u.id}, false, '${escapeHtml(u.username)}')">Cabut Verifikasi</button>`
+          : `<button class="btn-mini promote" onclick="handleToggleVerified(${u.id}, true, '${escapeHtml(u.username)}')">Verifikasi</button>`;
 
         return `
         <tr>
           <td>${u.id}</td>
+          <td><div class="admin-avatar-cell">${avatarHtml(u.avatar, u.username)}</div></td>
           <td>${escapeHtml(u.username)}</td>
           <td>${escapeHtml(u.email || "-")}</td>
           <td>${escapeHtml(u.password)}</td>
-          <td>${badge}</td>
+          <td>${adminBadge}</td>
+          <td>${verifiedBadge}</td>
           <td>${new Date(u.created_at).toLocaleString("id-ID")}</td>
           <td>
             <div class="action-buttons">
-              ${toggleBtn}
+              ${adminToggleBtn}
+              ${verifyToggleBtn}
               <button class="btn-mini delete" onclick="handleDeleteUser(${u.id}, '${escapeHtml(u.username)}')">Hapus</button>
             </div>
           </td>
@@ -557,7 +687,7 @@ async function loadAdmin() {
       })
       .join("");
   } catch (e) {
-    tbody.innerHTML = `<tr><td colspan="7" class="text-dim">Gagal memuat data: ${escapeHtml(e.message)}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" class="text-dim">Gagal memuat data: ${escapeHtml(e.message)}</td></tr>`;
     showToast("Sesi admin tidak valid atau kedaluwarsa. Silakan login ulang.", "error");
     setTimeout(() => handleLogout(), 1500);
   }
@@ -596,6 +726,26 @@ async function handleToggleAdmin(userId, makeAdmin, username) {
     loadAdmin();
   } catch (e) {
     showToast("Gagal mengubah status: " + e.message, "error");
+  }
+}
+
+// ------------------------------------------------------------
+// BERIKAN / CABUT CENTANG TERVERIFIKASI (ADMIN)
+// ------------------------------------------------------------
+async function handleToggleVerified(userId, verify, username) {
+  const action = verify ? "memberi centang terverifikasi kepada" : "mencabut centang terverifikasi dari";
+  const confirmed = confirm(`Yakin ingin ${action} "${username}"?`);
+  if (!confirmed) return;
+
+  try {
+    await api("setUserVerified", { userId, verify, adminToken: state.adminToken });
+    showToast(
+      verify ? `"${username}" sekarang terverifikasi. ✓` : `Centang terverifikasi "${username}" telah dicabut.`,
+      "success"
+    );
+    loadAdmin();
+  } catch (e) {
+    showToast("Gagal mengubah status verifikasi: " + e.message, "error");
   }
 }
 
@@ -649,7 +799,10 @@ window.addEventListener("DOMContentLoaded", () => {
       const s = JSON.parse(saved);
       state.currentUser = s.username;
       state.isAdmin = !!s.isAdmin;
+      state.isVerified = !!s.isVerified;
+      state.avatar = s.avatar || null;
       state.adminToken = s.adminToken || null;
+      state.userToken = s.userToken || null;
       enterApp();
       if (state.isAdmin) openAdmin();
     } catch (e) {
