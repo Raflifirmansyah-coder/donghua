@@ -152,6 +152,25 @@ function renderNavAvatar() {
 // ------------------------------------------------------------
 // NOTIFIKASI TOAST
 // ------------------------------------------------------------
+// ------------------------------------------------------------
+// NOTIFIKASI TENGAH LAYAR (dipakai untuk aksi admin: hapus,
+// verifikasi, jadikan admin)
+// ------------------------------------------------------------
+function showCenterNotice(message, type = "success", duration = 1800) {
+  const el = document.getElementById("centerNotice");
+  const icon = document.getElementById("centerNoticeIcon");
+  const text = document.getElementById("centerNoticeText");
+
+  el.className = `center-notice ${type}`;
+  icon.textContent = type === "success" ? "✓" : "✕";
+  text.textContent = message;
+  el.classList.remove("hidden");
+
+  setTimeout(() => {
+    el.classList.add("hidden");
+  }, duration);
+}
+
 function showToast(message, type = "success", duration = 3500) {
   const container = document.getElementById("toastContainer");
   const toast = document.createElement("div");
@@ -702,10 +721,10 @@ async function handleDeleteUser(userId, username) {
 
   try {
     await api("deleteUser", { userId, adminToken: state.adminToken });
-    showToast(`Akun "${username}" berhasil dihapus.`, "success");
+    showCenterNotice(`Akun "${username}" berhasil dihapus`, "success");
     loadAdmin();
   } catch (e) {
-    showToast("Gagal menghapus akun: " + e.message, "error");
+    showCenterNotice("Gagal menghapus akun", "error");
   }
 }
 
@@ -719,13 +738,13 @@ async function handleToggleAdmin(userId, makeAdmin, username) {
 
   try {
     await api("setUserAdmin", { userId, makeAdmin, adminToken: state.adminToken });
-    showToast(
-      makeAdmin ? `"${username}" sekarang menjadi admin.` : `Status admin "${username}" telah dicabut.`,
+    showCenterNotice(
+      makeAdmin ? `"${username}" sekarang menjadi admin` : `Status admin "${username}" dicabut`,
       "success"
     );
     loadAdmin();
   } catch (e) {
-    showToast("Gagal mengubah status: " + e.message, "error");
+    showCenterNotice("Gagal mengubah status", "error");
   }
 }
 
@@ -739,13 +758,13 @@ async function handleToggleVerified(userId, verify, username) {
 
   try {
     await api("setUserVerified", { userId, verify, adminToken: state.adminToken });
-    showToast(
-      verify ? `"${username}" sekarang terverifikasi. ✓` : `Centang terverifikasi "${username}" telah dicabut.`,
+    showCenterNotice(
+      verify ? `"${username}" sekarang terverifikasi ✓` : `Verifikasi "${username}" dicabut`,
       "success"
     );
     loadAdmin();
   } catch (e) {
-    showToast("Gagal mengubah status verifikasi: " + e.message, "error");
+    showCenterNotice("Gagal mengubah status verifikasi", "error");
   }
 }
 
