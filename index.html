@@ -197,6 +197,17 @@
     </div>
   </section>
 
+  <!-- ============= MODAL KONFIRMASI (PENGGANTI confirm() BAWAAN) ============= -->
+  <div id="confirmModal" class="center-notice hidden">
+    <div class="center-notice-box confirm-box">
+      <p id="confirmModalText" class="center-notice-text"></p>
+      <div class="confirm-modal-actions">
+        <button class="btn-mini demote" onclick="resolveConfirmModal(false)">Batal</button>
+        <button class="btn-mini promote" onclick="resolveConfirmModal(true)">Ya, Lanjutkan</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ============= NOTIFIKASI TENGAH LAYAR (AKSI ADMIN) ============= -->
   <div id="centerNotice" class="center-notice hidden">
     <div class="center-notice-box">
