@@ -71,12 +71,12 @@ body {
 .verified-badge {
   display: inline-flex;
   align-items: center; justify-content: center;
-  width: 16px; height: 16px;
-  margin-left: 5px;
-  clip-path: polygon(50.0% 0.0%, 59.8% 13.3%, 75.0% 6.7%, 76.9% 23.1%, 93.3% 25.0%, 86.7% 40.2%, 100.0% 50.0%, 86.7% 59.8%, 93.3% 75.0%, 76.9% 76.9%, 75.0% 93.3%, 59.8% 86.7%, 50.0% 100.0%, 40.2% 86.7%, 25.0% 93.3%, 23.1% 76.9%, 6.7% 75.0%, 13.3% 59.8%, 0.0% 50.0%, 13.3% 40.2%, 6.7% 25.0%, 23.1% 23.1%, 25.0% 6.7%, 40.2% 13.3%);
+  width: 20px; height: 20px;
+  margin-left: 6px;
+  clip-path: polygon(50.0% 0.0%, 63.4% 17.7%, 85.4% 14.6%, 82.3% 36.6%, 100.0% 50.0%, 82.3% 63.4%, 85.4% 85.4%, 63.4% 82.3%, 50.0% 100.0%, 36.6% 82.3%, 14.6% 85.4%, 17.7% 63.4%, 0.0% 50.0%, 17.7% 36.6%, 14.6% 14.6%, 36.6% 17.7%);
   background: #22c55e;
   color: #ffffff;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 900;
   vertical-align: middle;
 }
@@ -561,6 +561,10 @@ tbody tr:hover { background: rgba(34, 211, 238, 0.05); }
   0% { transform: scale(.7); opacity: 0; }
   100% { transform: scale(1); opacity: 1; }
 }
+.confirm-box { min-width: 300px; max-width: 380px; }
+.confirm-box .center-notice-text { margin-bottom: 20px; font-size: 15px; }
+.confirm-modal-actions { display: flex; gap: 10px; justify-content: center; }
+.confirm-modal-actions .btn-mini { padding: 9px 20px; font-size: 13px; }
 
 .toast {
   display: flex;
