@@ -80,6 +80,11 @@ body {
   font-weight: 900;
   vertical-align: middle;
 }
+.verified-badge.admin-badge {
+  background: radial-gradient(circle at 35% 28%, rgba(255,255,255,.5), rgba(0,0,0,0) 42%), #0a0a0a;
+  color: #ffffff;
+  filter: drop-shadow(0 0 1.4px #ffffff) drop-shadow(0 0 0.6px #ffffff);
+}
 
 .comment-avatar {
   width: 28px; height: 28px;
