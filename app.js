@@ -156,6 +156,27 @@ function renderNavAvatar() {
 // NOTIFIKASI TENGAH LAYAR (dipakai untuk aksi admin: hapus,
 // verifikasi, jadikan admin)
 // ------------------------------------------------------------
+// ------------------------------------------------------------
+// MODAL KONFIRMASI CUSTOM (pengganti confirm() bawaan browser)
+// ------------------------------------------------------------
+let confirmModalResolver = null;
+
+function showConfirmModal(message) {
+  document.getElementById("confirmModalText").textContent = message;
+  document.getElementById("confirmModal").classList.remove("hidden");
+  return new Promise((resolve) => {
+    confirmModalResolver = resolve;
+  });
+}
+
+function resolveConfirmModal(result) {
+  document.getElementById("confirmModal").classList.add("hidden");
+  if (confirmModalResolver) {
+    confirmModalResolver(result);
+    confirmModalResolver = null;
+  }
+}
+
 function showCenterNotice(message, type = "success", duration = 1800) {
   const el = document.getElementById("centerNotice");
   const icon = document.getElementById("centerNoticeIcon");
@@ -716,7 +737,7 @@ async function loadAdmin() {
 // HAPUS AKUN USER (ADMIN)
 // ------------------------------------------------------------
 async function handleDeleteUser(userId, username) {
-  const confirmed = confirm(`Yakin ingin menghapus akun "${username}"? Tindakan ini tidak bisa dibatalkan.`);
+  const confirmed = await showConfirmModal(`Yakin ingin menghapus akun "${username}"? Tindakan ini tidak bisa dibatalkan.`);
   if (!confirmed) return;
 
   try {
@@ -733,7 +754,7 @@ async function handleDeleteUser(userId, username) {
 // ------------------------------------------------------------
 async function handleToggleAdmin(userId, makeAdmin, username) {
   const action = makeAdmin ? "menjadikan" : "mencabut status admin dari";
-  const confirmed = confirm(`Yakin ingin ${action} "${username}"?`);
+  const confirmed = await showConfirmModal(`Yakin ingin ${action} "${username}"?`);
   if (!confirmed) return;
 
   try {
@@ -753,7 +774,7 @@ async function handleToggleAdmin(userId, makeAdmin, username) {
 // ------------------------------------------------------------
 async function handleToggleVerified(userId, verify, username) {
   const action = verify ? "memberi centang terverifikasi kepada" : "mencabut centang terverifikasi dari";
-  const confirmed = confirm(`Yakin ingin ${action} "${username}"?`);
+  const confirmed = await showConfirmModal(`Yakin ingin ${action} "${username}"?`);
   if (!confirmed) return;
 
   try {
