@@ -577,6 +577,23 @@ tbody tr:hover { background: rgba(34, 211, 238, 0.05); }
   100% { transform: scale(1); opacity: 1; }
 }
 .confirm-box { min-width: 300px; max-width: 380px; }
+.confirm-icon {
+  background: radial-gradient(circle at 35% 30%, rgba(251, 191, 36, .45), rgba(251, 191, 36, .15));
+  color: #fbbf24;
+  margin-bottom: 14px;
+}
+.confirm-icon.danger {
+  background: radial-gradient(circle at 35% 30%, rgba(248, 113, 113, .45), rgba(248, 113, 113, .15));
+  color: var(--danger);
+}
+.confirm-modal-title {
+  position: relative;
+  font-size: 19px;
+  font-weight: 800;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+.confirm-box .center-notice-text { margin-bottom: 22px; font-size: 14px; color: var(--text-dim); }
 .confirm-box .center-notice-text { margin-bottom: 22px; font-size: 15px; }
 .confirm-modal-actions { position: relative; display: flex; gap: 10px; justify-content: center; }
 .confirm-modal-actions .btn-mini {
