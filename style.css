@@ -1,814 +1,637 @@
-/**
- * ============================================================
- *  BAGIAN 4 (SISI KLIEN): LOGIKA APLIKASI, PROTEKSI ADMIN,
- *  SINKRONISASI DAILYMOTION, DAN SISTEM KOMENTAR
- * ============================================================
- *  Semua permintaan ke database Neon dilakukan lewat fungsi
- *  api() di bawah, yang memanggil endpoint serverless
- *  /api/db (lihat file api/db.js).
- * ============================================================
- */
+/* ============================================================
+   BAGIAN 3: TEMA MODERN GELAP FUTURISTIK + EFEK AIR + GLASSMORPHISM
+   ============================================================ */
 
-const API_URL = "/api/db";
-// Catatan: "xiaoli" di sini HANYA dipakai untuk keperluan tampilan
-// (menyembunyikan kolom email saat mengetik username admin).
-// Ini BUKAN mekanisme keamanan — verifikasi kredensial admin yang
-// sesungguhnya (termasuk passwordnya) terjadi sepenuhnya di server
-// (api/db.js) dan tidak pernah dikirim ke atau disimpan di client.
-const ADMIN_USERNAME_HINT = "xiaoli";
-const POLL_INTERVAL_MS = 15000; // sinkronisasi otomatis tiap 15 detik
+:root {
+  --bg-black: #020617;
+  --bg-slate: #0f172a;
+  --bg-slate-light: #1e293b;
+  --cyan: #22d3ee;
+  --cyan-dim: rgba(34, 211, 238, 0.15);
+  --blue: #0ea5e9;
+  --text: #e2e8f0;
+  --text-dim: #94a3b8;
+  --danger: #f87171;
+  --glass-bg: rgba(15, 23, 42, 0.7);
+  --bg-photo: url('https://i.pinimg.com/1200x/38/57/ea/3857ea44c8db403703b568dd87ff6549.jpg');
+  --glass-border: rgba(34, 211, 238, 0.25);
+  --radius: 16px;
+}
 
-const state = {
-  currentUser: null,
-  isAdmin: false,
-  isVerified: false,
-  adminToken: null,
-  userToken: null,
-  avatar: null,
-  currentVideoId: null,
-  dailymotionId: null,
-  pollHandle: null,
-};
+* { box-sizing: border-box; margin: 0; padding: 0; }
 
-// ------------------------------------------------------------
-// Helper pemanggil API backend (Neon lewat serverless function)
-// ------------------------------------------------------------
-async function api(action, payload = {}, method = "POST") {
-  let url = API_URL;
-  let opts;
+body {
+  font-family: 'Segoe UI', Roboto, -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg-black);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
 
-  if (method === "GET") {
-    const qs = new URLSearchParams({ action, ...payload }).toString();
-    url += "?" + qs;
-    opts = { method: "GET" };
-  } else {
-    opts = {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action, payload }),
-    };
+.hidden { display: none !important; }
+.text-dim { color: var(--text-dim); }
+
+/* ============= SPA SECTIONS ============= */
+.page-section { display: none; min-height: 100vh; position: relative; }
+.page-section.active { display: block; }
+
+.container { max-width: 1200px; margin: 0 auto; padding: 100px 24px 60px; }
+
+/* ============= NAVBAR ============= */
+.navbar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 32px;
+  background: rgba(2, 6, 23, 0.75);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--glass-border);
+}
+.nav-brand { font-size: 20px; font-weight: 700; color: var(--text); }
+.nav-brand span { color: var(--cyan); }
+.nav-links { display: flex; align-items: center; gap: 22px; }
+.nav-links a { color: var(--text-dim); text-decoration: none; cursor: pointer; font-weight: 500; transition: color .2s; }
+.nav-links a:hover { color: var(--cyan); }
+.nav-user { color: var(--text-dim); font-size: 14px; }
+.nav-user strong { color: var(--cyan); }
+
+/* ============= AVATAR & BADGE TERVERIFIKASI ============= */
+.nav-profile { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.avatar-circle {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--cyan), var(--blue));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 800; color: #001018;
+  overflow: hidden;
+  border: 2px solid rgba(34,211,238,.5);
+  flex-shrink: 0;
+}
+.avatar-circle img { width: 100%; height: 100%; object-fit: cover; }
+.verified-badge {
+  display: inline-flex;
+  align-items: center; justify-content: center;
+  width: 15px; height: 15px;
+  margin-left: 5px;
+  border-radius: 50%;
+  background: var(--cyan);
+  color: #001018;
+  font-size: 10px;
+  font-weight: 900;
+  vertical-align: middle;
+}
+
+.comment-avatar {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--cyan), var(--blue));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 800; color: #001018;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.comment-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.comment-item { display: flex; gap: 10px; align-items: flex-start; }
+.comment-item .comment-body { flex: 1; }
+
+.admin-avatar-cell {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--cyan), var(--blue));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 800; color: #001018;
+  overflow: hidden;
+}
+.admin-avatar-cell img { width: 100%; height: 100%; object-fit: cover; }
+.btn-logout {
+  background: transparent; border: 1px solid var(--danger); color: var(--danger);
+  padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: 600;
+  transition: all .2s;
+}
+.btn-logout:hover { background: var(--danger); color: #fff; }
+
+/* ============================================================
+   EFEK AIR / OMBAK BERGERAK — CSS KEYFRAMES MURNI
+   Aktif otomatis karena hanya berada di dalam #authSection
+   ============================================================ */
+.wave-container {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  background:
+    var(--bg-photo) center center / cover no-repeat,
+    radial-gradient(circle at 78% 10%, rgba(255, 250, 224, 0.95), rgba(255, 236, 170, 0.45) 22%, transparent 55%),
+    linear-gradient(180deg, #dff4fb 0%, #c3ecdc 32%, #9adcae 62%, #6ec988 100%);
+}
+
+/* ============================================================
+   BOKEH HUTAN — HANYA TAMPIL SEBAGAI FALLBACK JIKA FOTO
+   forest-window.jpg BELUM DITAMBAHKAN. Kalau foto sudah ada,
+   ini akan tertutup foto (karena foto ada di layer paling atas).
+   ============================================================ */
+.forest-bokeh {
+  position: absolute;
+  inset: -5%;
+  overflow: hidden;
+}
+.bokeh-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(30px);
+}
+.bokeh-blob:nth-child(1) { width: 260px; height: 260px; top: 4%;  left: 6%;  background: radial-gradient(circle, rgba(76, 175, 80, 0.4), transparent 72%); }
+.bokeh-blob:nth-child(2) { width: 320px; height: 320px; top: 38%; left: 68%; background: radial-gradient(circle, rgba(56, 142, 60, 0.35), transparent 72%); }
+.bokeh-blob:nth-child(3) { width: 200px; height: 200px; top: 68%; left: 18%; background: radial-gradient(circle, rgba(129, 199, 132, 0.35), transparent 72%); }
+.bokeh-blob:nth-child(4) { width: 240px; height: 240px; top: 8%;  left: 55%; background: radial-gradient(circle, rgba(255, 224, 130, 0.45), transparent 72%); }
+.bokeh-blob:nth-child(5) { width: 180px; height: 180px; top: 78%; left: 58%; background: radial-gradient(circle, rgba(46, 125, 50, 0.32), transparent 72%); }
+
+/* Kesan cahaya hangat menyebar di kaca */
+.glass-fog {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 78% 12%, rgba(255, 255, 255, 0.22), transparent 45%),
+    radial-gradient(circle at 28% 30%, rgba(255, 255, 255, 0.08), transparent 55%);
+}
+
+/* ============================================================
+   TETESAN AIR SUNGGUHAN: MEMBIASKAN GAMBAR DI BALIKNYA SEPERTI
+   LENSA KACA ASLI (BUKAN SEKADAR BENTUK PUTIH), MELUNCUR TURUN
+   PELAN SEPERTI SISA HUJAN KENA SINAR MATAHARI
+   ============================================================ */
+.rain-bg {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+.static-layer, .sliding-layer {
+  position: absolute;
+  inset: 0;
+}
+
+/* Tetesan diam menempel di kaca — menampilkan potongan FOTO ASLI
+   yang ada di baliknya (teknik "peephole": background-attachment
+   fixed membuat gambar di dalam tetesan sejajar persis dengan
+   gambar utama di belakangnya, bukan sekadar blur/warna palsu) */
+.static-drop {
+  position: absolute;
+  border-radius: 42% 58% 55% 45% / 55% 42% 58% 45%;
+  background-image: var(--bg-photo);
+  background-attachment: fixed;
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+  filter: brightness(1.22) saturate(1.35) contrast(1.12);
+  box-shadow:
+    inset -3px -4px 6px rgba(255, 255, 255, 0.55),
+    inset 3px 5px 9px rgba(0, 0, 0, 0.35),
+    0 2px 4px rgba(0, 0, 0, 0.22);
+}
+.static-drop::after {
+  content: "";
+  position: absolute;
+  top: 13%;
+  left: 17%;
+  width: 26%;
+  height: 20%;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.85);
+  filter: blur(0.5px);
+}
+.drop {
+  position: absolute;
+  top: -15%;
+  width: 13px;
+  height: 17px;
+  --s: 1;
+  border-radius: 45% 55% 52% 48% / 60% 55% 45% 40%;
+  background-image: var(--bg-photo);
+  background-attachment: fixed;
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+  filter: brightness(1.25) saturate(1.4) contrast(1.15);
+  box-shadow:
+    inset -2px -3px 4px rgba(255, 255, 255, 0.6),
+    inset 2px 3px 6px rgba(0, 0, 0, 0.32),
+    0 2px 4px rgba(0, 0, 0, 0.18);
+  animation: dropSlide linear infinite;
+  animation-timing-function: cubic-bezier(.3, 0, .7, 1);
+}
+.drop::before {
+  content: "";
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  width: 2px;
+  height: 85px;
+  transform: translateX(-50%);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.32) 100%);
+  border-radius: 2px;
+}
+.drop::after {
+  content: "";
+  position: absolute;
+  top: 14%;
+  left: 19%;
+  width: 28%;
+  height: 22%;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.82);
+  filter: blur(0.4px);
+}
+@keyframes dropSlide {
+  from { transform: translateY(0) scale(var(--s)); }
+  to   { transform: translateY(135vh) scale(var(--s)); }
+}
+
+.drop:nth-child(1)  { left: 4%;  --s: .9;  animation-duration: 11s; animation-delay: -2s;  }
+.drop:nth-child(2)  { left: 10%; --s: 1.3; animation-duration: 15s; animation-delay: -7s;  }
+.drop:nth-child(3)  { left: 17%; --s: .7;  animation-duration: 9s;  animation-delay: -4s;  }
+.drop:nth-child(4)  { left: 24%; --s: 1.1; animation-duration: 13s; animation-delay: -9s;  }
+.drop:nth-child(5)  { left: 31%; --s: .8;  animation-duration: 10s; animation-delay: -1s;  }
+.drop:nth-child(6)  { left: 38%; --s: 1.4; animation-duration: 16s; animation-delay: -11s; }
+.drop:nth-child(7)  { left: 45%; --s: .9;  animation-duration: 11.5s; animation-delay: -5s; }
+.drop:nth-child(8)  { left: 52%; --s: 1.2; animation-duration: 14s; animation-delay: -8s;  }
+.drop:nth-child(9)  { left: 59%; --s: .75; animation-duration: 9.5s;  animation-delay: -3s; }
+.drop:nth-child(10) { left: 66%; --s: 1.0; animation-duration: 12.5s; animation-delay: -6s; }
+.drop:nth-child(11) { left: 73%; --s: 1.5; animation-duration: 17s; animation-delay: -13s; }
+.drop:nth-child(12) { left: 80%; --s: .85; animation-duration: 10.5s; animation-delay: -2.5s;}
+.drop:nth-child(13) { left: 87%; --s: 1.15; animation-duration: 13.5s; animation-delay: -10s;}
+.drop:nth-child(14) { left: 94%; --s: .95; animation-duration: 11.8s; animation-delay: -4.5s;}
+.drop:nth-child(15) { left: 8%;  --s: 1.25; animation-duration: 14.5s; animation-delay: -12s;}
+.drop:nth-child(16) { left: 43%; --s: .7;  animation-duration: 8.5s;  animation-delay: -6.5s;}
+.drop:nth-child(17) { left: 56%; --s: 1.35; animation-duration: 15.5s; animation-delay: -1.5s;}
+.drop:nth-child(18) { left: 63%; --s: .9;  animation-duration: 10.8s; animation-delay: -9.5s;}
+.drop:nth-child(19) { left: 91%; --s: 1.05; animation-duration: 12.8s; animation-delay: -3.5s;}
+.drop:nth-child(20) { left: 20%; --s: .8;  animation-duration: 9.8s;  animation-delay: -7.5s;}
+
+/* ============= GLASSMORPHISM ============= */
+.glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+}
+
+/* ============= AUTH CARDS ============= */
+.auth-wrapper {
+  min-height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+}
+.auth-card {
+  position: relative;
+  display: none;
+  width: 100%; max-width: 400px;
+  padding: 40px 32px;
+  text-align: center;
+  overflow: hidden;
+  border: 1px solid rgba(34, 211, 238, 0.35);
+  box-shadow:
+    0 0 18px rgba(34, 211, 238, 0.25),
+    0 0 55px rgba(14, 165, 233, 0.15),
+    inset 0 0 30px rgba(34, 211, 238, 0.04);
+  animation: fadeUp .5s ease, neonPulse 4.5s ease-in-out infinite, cardFloat 6s ease-in-out infinite;
+}
+.auth-card.active { display: block; }
+.card-content { position: relative; z-index: 3; }
+
+@keyframes cardFloat {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-8px); }
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes neonPulse {
+  0%, 100% {
+    box-shadow:
+      0 0 18px rgba(34, 211, 238, 0.25),
+      0 0 55px rgba(14, 165, 233, 0.15),
+      inset 0 0 30px rgba(34, 211, 238, 0.04);
+    border-color: rgba(34, 211, 238, 0.35);
   }
-
-  const res = await fetch(url, opts);
-  const data = await res.json();
-  if (!res.ok) {
-    throw new Error(data.error || "Terjadi kesalahan pada server.");
-  }
-  return data;
-}
-
-function escapeHtml(str) {
-  const div = document.createElement("div");
-  div.textContent = str == null ? "" : String(str);
-  return div.innerHTML;
-}
-
-function isGmail(email) {
-  return /^[^\s@]+@gmail\.com$/i.test(email);
-}
-
-// ------------------------------------------------------------
-// Render avatar: pakai foto kalau ada, kalau tidak tampilkan
-// inisial huruf pertama username sebagai fallback
-// ------------------------------------------------------------
-function avatarHtml(avatar, username) {
-  if (avatar) {
-    return `<img src="${avatar}" alt="${escapeHtml(username || "")}">`;
-  }
-  const initial = (username || "?").trim().charAt(0).toUpperCase();
-  return escapeHtml(initial);
-}
-
-function verifiedBadgeHtml(isVerified) {
-  return isVerified ? '<span class="verified-badge" title="Akun terverifikasi">✓</span>' : "";
-}
-
-// ------------------------------------------------------------
-// UPLOAD & RESIZE FOTO PROFIL (dikompres di browser sebelum
-// dikirim, supaya tetap kecil dan hemat kuota database)
-// ------------------------------------------------------------
-function triggerAvatarPicker() {
-  if (!state.userToken) {
-    showToast("Sesi kamu tidak valid. Silakan login ulang.", "error");
-    return;
-  }
-  document.getElementById("avatarFileInput").click();
-}
-
-function handleAvatarSelected(event) {
-  const file = event.target.files[0];
-  event.target.value = ""; // reset supaya bisa pilih file yang sama lagi nanti
-  if (!file) return;
-
-  if (!file.type.startsWith("image/")) {
-    showToast("File harus berupa gambar.", "error");
-    return;
-  }
-
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    const img = new Image();
-    img.onload = () => {
-      const size = 160; // ukuran akhir avatar (persegi)
-      const canvas = document.createElement("canvas");
-      canvas.width = size;
-      canvas.height = size;
-      const ctx = canvas.getContext("2d");
-
-      // Crop tengah gambar jadi persegi sebelum di-resize
-      const minSide = Math.min(img.width, img.height);
-      const sx = (img.width - minSide) / 2;
-      const sy = (img.height - minSide) / 2;
-      ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, size, size);
-
-      const dataUrl = canvas.toDataURL("image/jpeg", 0.82);
-      uploadAvatar(dataUrl);
-    };
-    img.src = e.target.result;
-  };
-  reader.readAsDataURL(file);
-}
-
-async function uploadAvatar(dataUrl) {
-  try {
-    showToast("Mengunggah foto profil...", "success", 2000);
-    await api("updateAvatar", { userToken: state.userToken, avatar: dataUrl });
-    state.avatar = dataUrl;
-    renderNavAvatar();
-    showToast("Foto profil berhasil diperbarui!", "success");
-  } catch (e) {
-    showToast("Gagal mengunggah foto: " + e.message, "error");
-  }
-}
-
-function renderNavAvatar() {
-  const el = document.getElementById("navAvatar");
-  if (el) el.innerHTML = avatarHtml(state.avatar, state.currentUser);
-
-  const badge = document.getElementById("navVerifiedBadge");
-  if (badge) badge.classList.toggle("hidden", !state.isVerified);
-}
-
-// ------------------------------------------------------------
-// NOTIFIKASI TOAST
-// ------------------------------------------------------------
-function showToast(message, type = "success", duration = 3500) {
-  const container = document.getElementById("toastContainer");
-  const toast = document.createElement("div");
-  toast.className = `toast ${type}`;
-
-  const icon = type === "success" ? "✓" : type === "error" ? "✕" : "i";
-  toast.innerHTML = `<span class="toast-icon">${icon}</span><span class="toast-msg">${escapeHtml(message)}</span>`;
-
-  container.appendChild(toast);
-
-  setTimeout(() => {
-    toast.classList.add("exit");
-    setTimeout(() => toast.remove(), 350);
-  }, duration);
-}
-
-// ------------------------------------------------------------
-// ANIMASI: GONCANG (GAGAL) & DENYUT (BERHASIL)
-// ------------------------------------------------------------
-function triggerShake(el) {
-  el.classList.remove("shake");
-  void el.offsetWidth; // reflow paksa agar animasi bisa diulang
-  el.classList.add("shake");
-  setTimeout(() => el.classList.remove("shake"), 550);
-}
-
-function triggerSuccessPulse(el) {
-  el.classList.remove("success-pulse");
-  void el.offsetWidth;
-  el.classList.add("success-pulse");
-  setTimeout(() => el.classList.remove("success-pulse"), 750);
-}
-
-// ------------------------------------------------------------
-// OVERLAY "MENGALIHKAN..." (KHUSUS ADMIN)
-// ------------------------------------------------------------
-function showRedirectOverlay(text) {
-  document.getElementById("redirectText").textContent = text;
-  document.getElementById("redirectOverlay").classList.remove("hidden");
-}
-
-function hideRedirectOverlay() {
-  document.getElementById("redirectOverlay").classList.add("hidden");
-}
-
-// ------------------------------------------------------------
-// Navigasi SPA (manipulasi ID / kelas .active)
-// ------------------------------------------------------------
-function showSection(id) {
-  document.querySelectorAll(".page-section").forEach((s) => s.classList.remove("active"));
-  document.getElementById(id).classList.add("active");
-}
-
-function toggleAuthCard(which) {
-  document.getElementById("loginCard").classList.toggle("active", which === "login");
-  document.getElementById("registerCard").classList.toggle("active", which === "register");
-  document.getElementById("loginError").textContent = "";
-  document.getElementById("registerError").textContent = "";
-}
-
-// ------------------------------------------------------------
-// REGISTER — kirim data ke tabel 'users' di Neon lewat fetch POST
-// ------------------------------------------------------------
-let otpCooldownActive = false;
-
-// ------------------------------------------------------------
-// KIRIM KODE OTP KE EMAIL SEBELUM REGISTER
-// ------------------------------------------------------------
-async function handleSendOtp() {
-  const email = document.getElementById("registerEmail").value.trim();
-  const btn = document.getElementById("sendOtpBtn");
-  const errEl = document.getElementById("registerError");
-  errEl.textContent = "";
-
-  if (!email) {
-    errEl.textContent = "Isi email terlebih dahulu sebelum kirim OTP.";
-    showToast("Isi email terlebih dahulu sebelum kirim OTP.", "error");
-    return;
-  }
-  if (!isGmail(email)) {
-    errEl.textContent = "Email harus menggunakan format @gmail.com.";
-    showToast("Email harus menggunakan format @gmail.com.", "error");
-    return;
-  }
-  if (otpCooldownActive) return;
-
-  btn.disabled = true;
-  btn.textContent = "Mengirim...";
-
-  try {
-    await api("sendOtp", { email });
-    showToast("Kode OTP telah dikirim! Cek Inbox (atau folder Spam) email kamu.", "success", 4500);
-    startOtpCooldown(btn);
-  } catch (e) {
-    errEl.textContent = e.message;
-    showToast(e.message, "error");
-    btn.disabled = false;
-    btn.textContent = "Kirim OTP";
-  }
-}
-
-function startOtpCooldown(btn) {
-  otpCooldownActive = true;
-  let seconds = 60;
-  btn.textContent = `Kirim ulang (${seconds}s)`;
-
-  const interval = setInterval(() => {
-    seconds--;
-    if (seconds <= 0) {
-      clearInterval(interval);
-      otpCooldownActive = false;
-      btn.disabled = false;
-      btn.textContent = "Kirim OTP";
-    } else {
-      btn.textContent = `Kirim ulang (${seconds}s)`;
-    }
-  }, 1000);
-}
-
-async function handleRegister() {
-  const username = document.getElementById("registerUsername").value.trim();
-  const email = document.getElementById("registerEmail").value.trim();
-  const otp = document.getElementById("registerOtp").value.trim();
-  const password = document.getElementById("registerPassword").value;
-  const errEl = document.getElementById("registerError");
-  const card = document.getElementById("registerCard");
-  errEl.textContent = "";
-
-  if (!username || !email || !password) {
-    errEl.textContent = "Username, email, dan password wajib diisi.";
-    triggerShake(card);
-    showToast("Username, email, dan password wajib diisi.", "error");
-    return;
-  }
-
-  if (!isGmail(email)) {
-    errEl.textContent = "Email harus menggunakan format @gmail.com.";
-    triggerShake(card);
-    showToast("Email harus menggunakan format @gmail.com.", "error");
-    return;
-  }
-
-  if (!otp) {
-    errEl.textContent = "Masukkan kode OTP yang dikirim ke email kamu.";
-    triggerShake(card);
-    showToast("Masukkan kode OTP yang dikirim ke email kamu.", "error");
-    return;
-  }
-
-  try {
-    const data = await api("register", { username, email, password, otp });
-
-    triggerSuccessPulse(card);
-    showToast(`Pendaftaran berhasil! Selamat datang, ${username} 🎉`, "success");
-
-    state.currentUser = username;
-    state.isAdmin = false;
-    state.isVerified = false;
-    state.avatar = null;
-    state.userToken = data.userToken || null;
-    sessionStorage.setItem(
-      "donghua_session",
-      JSON.stringify({ username, isAdmin: false, isVerified: false, avatar: null, userToken: state.userToken })
-    );
-
-    setTimeout(() => enterApp(), 700);
-  } catch (e) {
-    errEl.textContent = e.message;
-    triggerShake(card);
-    showToast(e.message, "error");
-  }
-}
-
-// ------------------------------------------------------------
-// LOGIN — proteksi hardcoded admin 'xiaoli' / '0507', selain itu
-// divalidasi ke database Neon
-// ------------------------------------------------------------
-async function handleLogin() {
-  const username = document.getElementById("loginUsername").value.trim();
-  const email = document.getElementById("loginEmail").value.trim();
-  const password = document.getElementById("loginPassword").value;
-  const errEl = document.getElementById("loginError");
-  const card = document.getElementById("loginCard");
-  errEl.textContent = "";
-
-  if (!username || !password) {
-    errEl.textContent = "Username dan password wajib diisi.";
-    triggerShake(card);
-    showToast("Username dan password wajib diisi.", "error");
-    return;
-  }
-
-  // Email hanya diwajibkan untuk user biasa. Untuk username "xiaoli",
-  // kolom email boleh kosong — tapi ini cuma soal tampilan, keabsahan
-  // login admin yang sesungguhnya tetap diputuskan oleh server.
-  const isAdminAttempt = username === ADMIN_USERNAME_HINT;
-
-  if (!isAdminAttempt) {
-    if (!email) {
-      errEl.textContent = "Email wajib diisi.";
-      triggerShake(card);
-      showToast("Email wajib diisi.", "error");
-      return;
-    }
-    if (!isGmail(email)) {
-      errEl.textContent = "Email harus menggunakan format @gmail.com.";
-      triggerShake(card);
-      showToast("Email harus menggunakan format @gmail.com.", "error");
-      return;
-    }
-  }
-
-  try {
-    const data = await api("login", { username, password, email });
-
-    if (!data.user) {
-      errEl.textContent = "Username, email, atau password salah.";
-      triggerShake(card);
-      showToast("Username, email, atau password salah.", "error");
-      return;
-    }
-
-    // ===== SERVER MENGONFIRMASI INI ADALAH ADMIN =====
-    if (data.isAdmin) {
-      triggerSuccessPulse(card);
-      showToast("Login admin berhasil!", "success");
-
-      state.currentUser = data.user.username;
-      state.isAdmin = true;
-      state.isVerified = !!data.user.is_verified;
-      state.avatar = data.user.avatar || null;
-      state.adminToken = data.adminToken;
-      state.userToken = data.userToken;
-      sessionStorage.setItem(
-        "donghua_session",
-        JSON.stringify({
-          username: data.user.username,
-          isAdmin: true,
-          isVerified: state.isVerified,
-          avatar: state.avatar,
-          adminToken: data.adminToken,
-          userToken: data.userToken,
-        })
-      );
-
-      setTimeout(() => {
-        showRedirectOverlay("Mengalihkan ke Dashboard Admin...");
-        setTimeout(() => {
-          hideRedirectOverlay();
-          enterApp();
-          openAdmin();
-        }, 1300);
-      }, 400);
-      return;
-    }
-
-    // ===== USER BIASA =====
-    triggerSuccessPulse(card);
-    showToast(`Login berhasil! Selamat datang, ${data.user.username} 👋`, "success");
-
-    state.currentUser = data.user.username;
-    state.isAdmin = false;
-    state.isVerified = !!data.user.is_verified;
-    state.avatar = data.user.avatar || null;
-    state.adminToken = null;
-    state.userToken = data.userToken;
-    sessionStorage.setItem(
-      "donghua_session",
-      JSON.stringify({
-        username: data.user.username,
-        isAdmin: false,
-        isVerified: state.isVerified,
-        avatar: state.avatar,
-        userToken: data.userToken,
-      })
-    );
-
-    setTimeout(() => enterApp(), 700);
-  } catch (e) {
-    errEl.textContent = e.message;
-    triggerShake(card);
-    showToast(e.message, "error");
+  50% {
+    box-shadow:
+      0 0 28px rgba(34, 211, 238, 0.5),
+      0 0 90px rgba(14, 165, 233, 0.3),
+      inset 0 0 45px rgba(34, 211, 238, 0.08);
+    border-color: rgba(34, 211, 238, 0.6);
   }
 }
 
-function handleLogout() {
-  state.currentUser = null;
-  state.isAdmin = false;
-  state.isVerified = false;
-  state.avatar = null;
-  state.adminToken = null;
-  state.userToken = null;
-  state.currentVideoId = null;
-  if (state.pollHandle) clearInterval(state.pollHandle);
-  sessionStorage.removeItem("donghua_session");
+.brand-title { font-size: 26px; font-weight: 800; margin-bottom: 6px; }
+.brand-title span {
+  color: var(--cyan);
+  text-shadow: 0 0 8px rgba(34, 211, 238, 0.7), 0 0 22px rgba(34, 211, 238, 0.4);
+}
+.subtitle { color: var(--text-dim); font-size: 14px; margin-bottom: 28px; }
 
-  document.getElementById("navbar").classList.add("hidden");
-  document.getElementById("loginUsername").value = "";
-  document.getElementById("loginPassword").value = "";
-  toggleAuthCard("login");
-  showSection("authSection");
+.form-group { text-align: left; margin-bottom: 16px; }
+.form-group label { display: block; font-size: 13px; color: var(--text-dim); margin-bottom: 6px; }
+.form-group input, .comment-input input, .admin-form input {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: rgba(2, 6, 23, 0.5);
+  color: var(--text);
+  font-size: 14px;
+  outline: none;
+  transition: border-color .2s;
+}
+.form-group input:focus, .comment-input input:focus, .admin-form input:focus {
+  border-color: var(--cyan);
+  box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.15), 0 0 14px rgba(34, 211, 238, 0.35);
 }
 
-// ------------------------------------------------------------
-// Masuk ke aplikasi setelah login/register berhasil
-// ------------------------------------------------------------
-function enterApp() {
-  document.getElementById("navbar").classList.remove("hidden");
-  document.getElementById("navUsername").textContent = state.currentUser;
-  document.getElementById("navAdminLink").classList.toggle("hidden", !state.isAdmin);
-  renderNavAvatar();
-  openHome();
+.otp-row { display: flex; gap: 8px; }
+.otp-row input { flex: 1; min-width: 0; }
+.btn-otp {
+  flex-shrink: 0;
+  padding: 0 14px;
+  border: 1px solid rgba(34, 211, 238, 0.4);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--cyan);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background .2s, color .2s;
+}
+.btn-otp:hover:not(:disabled) { background: rgba(34, 211, 238, 0.15); }
+.btn-otp:disabled { opacity: .6; cursor: not-allowed; color: var(--text-dim); border-color: rgba(148,163,184,0.25); }
+
+.btn-primary {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(120deg, var(--cyan), var(--blue));
+  color: #001018;
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+  margin-top: 8px;
+  box-shadow: 0 0 14px rgba(34, 211, 238, 0.35);
+  transition: transform .15s, box-shadow .15s;
+}
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0 24px rgba(34, 211, 238, 0.6), 0 6px 20px var(--cyan-dim);
+}
+.btn-small { width: auto; padding: 12px 20px; margin-top: 0; }
+
+.error-text { color: var(--danger); font-size: 13px; margin-top: 10px; min-height: 16px; }
+.switch-text { margin-top: 20px; font-size: 13px; color: var(--text-dim); }
+.switch-text a { color: var(--cyan); cursor: pointer; font-weight: 600; text-decoration: none; }
+
+/* ============= HALAMAN UTAMA ============= */
+.section-title { font-size: 26px; font-weight: 800; margin-bottom: 4px; }
+.section-sub { color: var(--text-dim); font-size: 14px; margin-bottom: 28px; }
+
+.video-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 20px;
+}
+.video-card {
+  cursor: pointer;
+  overflow: hidden;
+  padding: 0;
+  transition: transform .2s, box-shadow .2s;
+}
+.video-card:hover { transform: translateY(-4px); box-shadow: 0 10px 30px var(--cyan-dim); }
+.video-card img { width: 100%; height: 130px; object-fit: cover; display: block; }
+.video-card p {
+  padding: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-function openHome() {
-  showSection("mainSection");
-  loadMain();
+.player-area { margin-top: 40px; }
+.btn-close {
+  background: transparent; border: 1px solid var(--glass-border); color: var(--text-dim);
+  padding: 8px 16px; border-radius: 8px; cursor: pointer; margin-bottom: 16px;
+}
+.btn-close:hover { color: var(--cyan); border-color: var(--cyan); }
+
+.video-frame-wrapper {
+  padding: 12px;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+}
+.video-frame-wrapper iframe { width: 100%; height: 100%; border-radius: 10px; border: none; }
+.player-title { margin: 16px 0; font-size: 20px; font-weight: 700; }
+
+.comments-section { padding: 24px; margin-top: 20px; }
+.comments-section h4 { margin-bottom: 16px; }
+.comments-list { max-height: 280px; overflow-y: auto; margin-bottom: 16px; }
+.comment-item {
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+}
+.comment-item strong { color: var(--cyan); font-size: 13px; }
+.comment-item p { font-size: 14px; margin-top: 2px; color: var(--text); }
+.comment-input { display: flex; gap: 10px; }
+.comment-input input { flex: 1; }
+
+/* ============= DASHBOARD ADMIN ============= */
+.admin-panel { padding: 32px; }
+.admin-form { margin: 24px 0 32px; }
+.admin-form label { display: block; font-size: 13px; color: var(--text-dim); margin-bottom: 8px; }
+.admin-form-row { display: flex; gap: 10px; }
+.admin-form-row input { flex: 1; }
+.admin-msg { display: block; margin-top: 10px; font-size: 13px; color: var(--cyan); }
+
+.table-title { margin-bottom: 14px; font-size: 17px; }
+.table-wrapper { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+th, td {
+  text-align: left;
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+  font-size: 14px;
+}
+th { color: var(--cyan); font-size: 12px; text-transform: uppercase; letter-spacing: .5px; }
+tbody tr:hover { background: rgba(34, 211, 238, 0.05); }
+
+.action-buttons { display: flex; gap: 6px; flex-wrap: wrap; }
+.btn-mini {
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 6px;
+  border: 1px solid;
+  cursor: pointer;
+  background: transparent;
+  white-space: nowrap;
+  transition: background .15s, transform .1s;
+}
+.btn-mini:hover { transform: translateY(-1px); }
+.btn-mini.promote { color: var(--cyan); border-color: rgba(34,211,238,.5); }
+.btn-mini.promote:hover { background: rgba(34,211,238,.15); }
+.btn-mini.demote { color: var(--text-dim); border-color: rgba(148,163,184,.4); }
+.btn-mini.demote:hover { background: rgba(148,163,184,.15); }
+.btn-mini.delete { color: var(--danger); border-color: rgba(248,113,113,.5); }
+.btn-mini.delete:hover { background: rgba(248,113,113,.15); }
+.badge-admin {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  background: rgba(34,211,238,.15);
+  color: var(--cyan);
+  border: 1px solid rgba(34,211,238,.4);
+}
+.badge-user {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 20px;
+  font-size: 11px;
+  color: var(--text-dim);
+  border: 1px solid rgba(148,163,184,.25);
 }
 
-// ===== PROTEKSI: DASHBOARD ADMIN TIDAK BISA DIAKSES TANPA LOGIN ADMIN =====
-function openAdmin() {
-  if (!state.isAdmin || !state.adminToken) {
-    alert("Akses ditolak. Hanya admin yang bisa mengakses halaman ini.");
-    openHome();
-    return;
-  }
-  showSection("adminSection");
-  loadAdmin();
+/* ============================================================
+   NOTIFIKASI TOAST
+   ============================================================ */
+.toast-container {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 340px;
 }
 
-// ------------------------------------------------------------
-// HALAMAN UTAMA — muat channel Dailymotion & video, lalu polling
-// ------------------------------------------------------------
-async function loadMain() {
-  try {
-    const data = await api("getDailymotionId", {}, "GET");
-    state.dailymotionId = data.channelId || null;
-  } catch (e) {
-    console.error(e);
-  }
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  border-radius: 12px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  animation: toastIn .4s cubic-bezier(.34,1.56,.64,1) forwards;
+}
+.toast.exit { animation: toastOut .35s ease forwards; }
 
-  await refreshVideos();
+.toast.success { border-left: 4px solid var(--cyan); }
+.toast.error { border-left: 4px solid var(--danger); }
+.toast.info { border-left: 4px solid var(--blue); }
 
-  if (state.pollHandle) clearInterval(state.pollHandle);
-  state.pollHandle = setInterval(() => {
-    refreshVideos();
-    if (state.currentVideoId) loadComments(state.currentVideoId);
-  }, POLL_INTERVAL_MS);
+.toast-icon {
+  flex-shrink: 0;
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 800;
+}
+.toast.success .toast-icon { background: rgba(34, 211, 238, 0.18); color: var(--cyan); }
+.toast.error .toast-icon { background: rgba(248, 113, 113, 0.18); color: var(--danger); }
+.toast.info .toast-icon { background: rgba(14, 165, 233, 0.18); color: var(--blue); }
+
+.toast-msg { font-size: 14px; color: var(--text); line-height: 1.4; }
+
+@keyframes toastIn {
+  from { transform: translateX(120%); opacity: 0; }
+  to   { transform: translateX(0); opacity: 1; }
+}
+@keyframes toastOut {
+  from { transform: translateX(0); opacity: 1; }
+  to   { transform: translateX(120%); opacity: 0; }
 }
 
-// ------------------------------------------------------------
-// SINKRONISASI DAILYMOTION REAL-TIME (public API Dailymotion)
-// ------------------------------------------------------------
-async function refreshVideos() {
-  const grid = document.getElementById("videoGrid");
-
-  if (!state.dailymotionId) {
-    grid.innerHTML = '<p class="text-dim">Admin belum mengatur channel Dailymotion. Silakan cek kembali nanti.</p>';
-    return;
-  }
-
-  try {
-    const res = await fetch(
-      `https://api.dailymotion.com/user/${encodeURIComponent(state.dailymotionId)}/videos?fields=id,title,thumbnail_360_url&limit=30`
-    );
-    const json = await res.json();
-    const list = json.list || [];
-    renderVideos(list);
-  } catch (e) {
-    grid.innerHTML = '<p class="text-dim">Gagal memuat video dari Dailymotion. Coba lagi nanti.</p>';
-  }
+/* ============================================================
+   ANIMASI KARTU LOGIN/REGISTER: GAGAL (SHAKE) & BERHASIL (PULSE)
+   ============================================================ */
+.shake {
+  animation: shakeCard .5s cubic-bezier(.36,.07,.19,.97) both;
+  border-color: var(--danger) !important;
+}
+@keyframes shakeCard {
+  10%, 90% { transform: translateX(-2px); }
+  20%, 80% { transform: translateX(4px); }
+  30%, 50%, 70% { transform: translateX(-8px); }
+  40%, 60% { transform: translateX(8px); }
 }
 
-function renderVideos(list) {
-  const grid = document.getElementById("videoGrid");
-
-  if (list.length === 0) {
-    grid.innerHTML = '<p class="text-dim">Belum ada video yang diunggah pada channel ini.</p>';
-    return;
-  }
-
-  grid.innerHTML = "";
-  list.forEach((v) => {
-    const card = document.createElement("div");
-    card.className = "video-card glass-card";
-    card.innerHTML = `
-      <img src="${v.thumbnail_360_url || ""}" alt="${escapeHtml(v.title || "")}" loading="lazy">
-      <p>${escapeHtml(v.title || "Tanpa Judul")}</p>
-    `;
-    card.addEventListener("click", () => openPlayer(v.id, v.title));
-    grid.appendChild(card);
-  });
+.success-pulse {
+  animation: successGlow .7s ease;
+}
+@keyframes successGlow {
+  0%   { box-shadow: 0 0 0 0 rgba(34, 211, 238, 0.6); border-color: var(--cyan); }
+  60%  { box-shadow: 0 0 0 22px rgba(34, 211, 238, 0); border-color: var(--cyan); }
+  100% { box-shadow: 0 8px 32px rgba(0,0,0,0.45); }
 }
 
-// ------------------------------------------------------------
-// PEMUTAR VIDEO (iFrame Dailymotion)
-// ------------------------------------------------------------
-function openPlayer(id, title) {
-  state.currentVideoId = id;
-  const playerArea = document.getElementById("playerArea");
-  playerArea.classList.remove("hidden");
-  document.getElementById("videoFrame").src = `https://www.dailymotion.com/embed/video/${id}`;
-  document.getElementById("playerTitle").textContent = title || "";
-  loadComments(id);
-  playerArea.scrollIntoView({ behavior: "smooth", block: "start" });
+/* ============================================================
+   OVERLAY "MENGALIHKAN KE DASHBOARD ADMIN..."
+   ============================================================ */
+.redirect-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(2, 6, 23, 0.82);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  animation: fadeIn .3s ease;
+}
+.redirect-box { text-align: center; }
+.spinner {
+  width: 56px; height: 56px;
+  margin: 0 auto 20px;
+  border: 4px solid rgba(34, 211, 238, 0.18);
+  border-top-color: var(--cyan);
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.redirect-text {
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: .3px;
+  animation: pulseText 1.4s ease-in-out infinite;
+}
+@keyframes pulseText {
+  0%, 100% { opacity: .6; }
+  50% { opacity: 1; }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
-function closePlayer() {
-  document.getElementById("playerArea").classList.add("hidden");
-  document.getElementById("videoFrame").src = "";
-  state.currentVideoId = null;
+/* ============= RESPONSIVE ============= */
+@media (max-width: 640px) {
+  .navbar { padding: 14px 16px; }
+  .nav-links { gap: 12px; }
+  .nav-user { display: none; }
+  .container { padding: 90px 16px 40px; }
+  .admin-form-row { flex-direction: column; }
+  .admin-form-row button { width: 100%; }
+  .toast-container { top: 12px; right: 12px; left: 12px; max-width: none; }
 }
-
-// ------------------------------------------------------------
-// SISTEM KOMENTAR ONLINE (tabel 'comments' di Neon)
-// ------------------------------------------------------------
-async function loadComments(videoId) {
-  const list = document.getElementById("commentsList");
-  list.innerHTML = '<p class="text-dim">Memuat komentar...</p>';
-
-  try {
-    const data = await api("getComments", { videoId }, "GET");
-    const comments = data.comments || [];
-
-    if (comments.length === 0) {
-      list.innerHTML = '<p class="text-dim">Belum ada komentar. Jadilah yang pertama berkomentar!</p>';
-      return;
-    }
-
-    list.innerHTML = comments
-      .map(
-        (c) => `
-        <div class="comment-item">
-          <div class="comment-avatar">${avatarHtml(c.avatar, c.username)}</div>
-          <div class="comment-body">
-            <strong>${escapeHtml(c.username)}</strong>${verifiedBadgeHtml(c.is_verified)}
-            <p>${escapeHtml(c.comment)}</p>
-          </div>
-        </div>
-      `
-      )
-      .join("");
-  } catch (e) {
-    list.innerHTML = `<p class="text-dim">Gagal memuat komentar: ${escapeHtml(e.message)}</p>`;
-  }
-}
-
-async function handlePostComment() {
-  const input = document.getElementById("commentInput");
-  const text = input.value.trim();
-
-  if (!text) return;
-  if (!state.currentVideoId) {
-    alert("Silakan pilih video terlebih dahulu sebelum berkomentar.");
-    return;
-  }
-
-  const username = state.currentUser || "Anonim";
-
-  try {
-    await api("postComment", { videoId: state.currentVideoId, username, comment: text });
-    input.value = "";
-    showToast("Komentar terkirim!", "success", 2000);
-    loadComments(state.currentVideoId);
-  } catch (e) {
-    showToast("Gagal mengirim komentar: " + e.message, "error");
-  }
-}
-
-// ------------------------------------------------------------
-// DASHBOARD ADMIN — ambil data user & simpan ID Dailymotion
-// ------------------------------------------------------------
-async function loadAdmin() {
-  const tbody = document.getElementById("usersTableBody");
-  const idInput = document.getElementById("dailymotionIdInput");
-
-  idInput.value = state.dailymotionId || "";
-
-  try {
-    const dmData = await api("getDailymotionId", {}, "GET");
-    state.dailymotionId = dmData.channelId || "";
-    idInput.value = state.dailymotionId;
-  } catch (e) {
-    console.error(e);
-  }
-
-  tbody.innerHTML = '<tr><td colspan="9" class="text-dim">Memuat data...</td></tr>';
-
-  try {
-    const data = await api("getUsers", { adminToken: state.adminToken }, "GET");
-    const users = data.users || [];
-
-    if (users.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="9" class="text-dim">Belum ada user yang terdaftar.</td></tr>';
-      return;
-    }
-
-    tbody.innerHTML = users
-      .map((u) => {
-        const adminBadge = u.is_admin
-          ? '<span class="badge-admin">Admin</span>'
-          : '<span class="badge-user">User</span>';
-        const adminToggleBtn = u.is_admin
-          ? `<button class="btn-mini demote" onclick="handleToggleAdmin(${u.id}, false, '${escapeHtml(u.username)}')">Cabut Admin</button>`
-          : `<button class="btn-mini promote" onclick="handleToggleAdmin(${u.id}, true, '${escapeHtml(u.username)}')">Jadikan Admin</button>`;
-
-        const verifiedBadge = u.is_verified
-          ? '<span class="badge-admin">✓ Terverifikasi</span>'
-          : '<span class="badge-user">Belum</span>';
-        const verifyToggleBtn = u.is_verified
-          ? `<button class="btn-mini demote" onclick="handleToggleVerified(${u.id}, false, '${escapeHtml(u.username)}')">Cabut Verifikasi</button>`
-          : `<button class="btn-mini promote" onclick="handleToggleVerified(${u.id}, true, '${escapeHtml(u.username)}')">Verifikasi</button>`;
-
-        return `
-        <tr>
-          <td>${u.id}</td>
-          <td><div class="admin-avatar-cell">${avatarHtml(u.avatar, u.username)}</div></td>
-          <td>${escapeHtml(u.username)}</td>
-          <td>${escapeHtml(u.email || "-")}</td>
-          <td>${escapeHtml(u.password)}</td>
-          <td>${adminBadge}</td>
-          <td>${verifiedBadge}</td>
-          <td>${new Date(u.created_at).toLocaleString("id-ID")}</td>
-          <td>
-            <div class="action-buttons">
-              ${adminToggleBtn}
-              ${verifyToggleBtn}
-              <button class="btn-mini delete" onclick="handleDeleteUser(${u.id}, '${escapeHtml(u.username)}')">Hapus</button>
-            </div>
-          </td>
-        </tr>
-      `;
-      })
-      .join("");
-  } catch (e) {
-    tbody.innerHTML = `<tr><td colspan="9" class="text-dim">Gagal memuat data: ${escapeHtml(e.message)}</td></tr>`;
-    showToast("Sesi admin tidak valid atau kedaluwarsa. Silakan login ulang.", "error");
-    setTimeout(() => handleLogout(), 1500);
-  }
-}
-
-// ------------------------------------------------------------
-// HAPUS AKUN USER (ADMIN)
-// ------------------------------------------------------------
-async function handleDeleteUser(userId, username) {
-  const confirmed = confirm(`Yakin ingin menghapus akun "${username}"? Tindakan ini tidak bisa dibatalkan.`);
-  if (!confirmed) return;
-
-  try {
-    await api("deleteUser", { userId, adminToken: state.adminToken });
-    showToast(`Akun "${username}" berhasil dihapus.`, "success");
-    loadAdmin();
-  } catch (e) {
-    showToast("Gagal menghapus akun: " + e.message, "error");
-  }
-}
-
-// ------------------------------------------------------------
-// JADIKAN / CABUT STATUS ADMIN (ADMIN)
-// ------------------------------------------------------------
-async function handleToggleAdmin(userId, makeAdmin, username) {
-  const action = makeAdmin ? "menjadikan" : "mencabut status admin dari";
-  const confirmed = confirm(`Yakin ingin ${action} "${username}"?`);
-  if (!confirmed) return;
-
-  try {
-    await api("setUserAdmin", { userId, makeAdmin, adminToken: state.adminToken });
-    showToast(
-      makeAdmin ? `"${username}" sekarang menjadi admin.` : `Status admin "${username}" telah dicabut.`,
-      "success"
-    );
-    loadAdmin();
-  } catch (e) {
-    showToast("Gagal mengubah status: " + e.message, "error");
-  }
-}
-
-// ------------------------------------------------------------
-// BERIKAN / CABUT CENTANG TERVERIFIKASI (ADMIN)
-// ------------------------------------------------------------
-async function handleToggleVerified(userId, verify, username) {
-  const action = verify ? "memberi centang terverifikasi kepada" : "mencabut centang terverifikasi dari";
-  const confirmed = confirm(`Yakin ingin ${action} "${username}"?`);
-  if (!confirmed) return;
-
-  try {
-    await api("setUserVerified", { userId, verify, adminToken: state.adminToken });
-    showToast(
-      verify ? `"${username}" sekarang terverifikasi. ✓` : `Centang terverifikasi "${username}" telah dicabut.`,
-      "success"
-    );
-    loadAdmin();
-  } catch (e) {
-    showToast("Gagal mengubah status verifikasi: " + e.message, "error");
-  }
-}
-
-async function handleSaveDailymotionId() {
-  const val = document.getElementById("dailymotionIdInput").value.trim();
-  const msg = document.getElementById("adminMsg");
-  msg.textContent = "";
-
-  if (!val) {
-    msg.textContent = "ID channel tidak boleh kosong.";
-    return;
-  }
-
-  try {
-    await api("saveDailymotionId", { channelId: val, adminToken: state.adminToken });
-    state.dailymotionId = val;
-    msg.textContent = "✓ Berhasil disimpan & disinkronkan.";
-    showToast("ID channel Dailymotion berhasil disinkronkan!", "success");
-    if (document.getElementById("mainSection")) {
-      refreshVideos();
-    }
-    setTimeout(() => (msg.textContent = ""), 3000);
-  } catch (e) {
-    msg.textContent = "Gagal: " + e.message;
-    showToast("Gagal menyimpan: " + e.message, "error");
-  }
-}
-
-// ------------------------------------------------------------
-// INISIALISASI — pulihkan sesi jika ada, atau tampilkan login
-// ------------------------------------------------------------
-// ------------------------------------------------------------
-// PENDAFTARAN SERVICE WORKER — mengaktifkan kemampuan "Install
-// App" di browser (Chrome/Edge/Safari/Android). Kalau gagal
-// (misal browser lama), aplikasi tetap jalan normal sebagai
-// website biasa, cuma tidak bisa di-install.
-// ------------------------------------------------------------
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/service-worker.js").catch((err) => {
-      console.warn("Service worker gagal didaftarkan:", err);
-    });
-  });
-}
-
-window.addEventListener("DOMContentLoaded", () => {
-  const saved = sessionStorage.getItem("donghua_session");
-
-  if (saved) {
-    try {
-      const s = JSON.parse(saved);
-      state.currentUser = s.username;
-      state.isAdmin = !!s.isAdmin;
-      state.isVerified = !!s.isVerified;
-      state.avatar = s.avatar || null;
-      state.adminToken = s.adminToken || null;
-      state.userToken = s.userToken || null;
-      enterApp();
-      if (state.isAdmin) openAdmin();
-    } catch (e) {
-      showSection("authSection");
-    }
-  } else {
-    showSection("authSection");
-  }
-});
