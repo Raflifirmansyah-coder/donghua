@@ -435,6 +435,13 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.episode-count {
+  display: block;
+  padding: 0 12px 12px;
+  margin-top: -8px;
+  font-size: 12px;
+  color: var(--cyan);
+}
 
 .player-area { margin-top: 40px; }
 .btn-close {
