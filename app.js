@@ -145,6 +145,63 @@ async function uploadAvatar(dataUrl) {
   }
 }
 
+// ------------------------------------------------------------
+// UBAH USERNAME
+// ------------------------------------------------------------
+function openUsernameModal() {
+  if (!state.userToken) {
+    showToast("Sesi kamu tidak valid. Silakan login ulang.", "error");
+    return;
+  }
+  if (state.currentUser === "xiaoli") {
+    showToast("Username admin utama tidak dapat diubah.", "error");
+    return;
+  }
+  document.getElementById("newUsernameInput").value = state.currentUser || "";
+  document.getElementById("usernameModalError").textContent = "";
+  document.getElementById("usernameModal").classList.remove("hidden");
+}
+
+function closeUsernameModal() {
+  document.getElementById("usernameModal").classList.add("hidden");
+}
+
+async function handleUpdateUsername() {
+  const newUsername = document.getElementById("newUsernameInput").value.trim();
+  const errEl = document.getElementById("usernameModalError");
+  errEl.textContent = "";
+
+  if (newUsername.length < 3) {
+    errEl.textContent = "Username baru minimal 3 karakter.";
+    return;
+  }
+
+  try {
+    const data = await api("updateUsername", { userToken: state.userToken, newUsername });
+    state.currentUser = data.username;
+    state.userToken = data.userToken;
+    if (data.adminToken) state.adminToken = data.adminToken;
+
+    sessionStorage.setItem(
+      "donghua_session",
+      JSON.stringify({
+        username: state.currentUser,
+        isAdmin: state.isAdmin,
+        isVerified: state.isVerified,
+        avatar: state.avatar,
+        adminToken: state.adminToken,
+        userToken: state.userToken,
+      })
+    );
+
+    document.getElementById("navUsername").textContent = state.currentUser;
+    closeUsernameModal();
+    showToast("Username berhasil diubah!", "success");
+  } catch (e) {
+    errEl.textContent = e.message;
+  }
+}
+
 function renderNavAvatar() {
   const el = document.getElementById("navAvatar");
   if (el) el.innerHTML = avatarHtml(state.avatar, state.currentUser);
@@ -625,7 +682,7 @@ function groupVideosBySeries(list) {
 
   const seriesList = Array.from(seriesMap.values());
   seriesList.forEach((s) => {
-    s.episodes.sort((a, b) => a.episodeNumber - b.episodeNumber);
+    s.episodes.sort((a, b) => b.episodeNumber - a.episodeNumber);
     if (s.episodes.length > 0) s.thumbnail = s.episodes[0].thumbnail;
   });
 
@@ -638,6 +695,18 @@ function groupVideosBySeries(list) {
 // API tiap kali sinkronisasi otomatis berjalan.
 // ------------------------------------------------------------
 const seriesCoverCache = new Map();
+let coverQueueTail = Promise.resolve();
+
+// Antre setiap request cover satu-per-satu dengan jeda, supaya
+// tidak menembak banyak request bersamaan ke AniList (penyebab 429).
+function queueCoverFetch(seriesName) {
+  if (seriesCoverCache.has(seriesName)) {
+    return Promise.resolve(seriesCoverCache.get(seriesName));
+  }
+  const result = coverQueueTail.then(() => fetchSeriesCover(seriesName));
+  coverQueueTail = result.then(() => new Promise((r) => setTimeout(r, 900))).catch(() => {});
+  return result;
+}
 
 function cleanSearchQuery(name) {
   return name
@@ -665,13 +734,22 @@ async function fetchSeriesCover(seriesName) {
         variables: { search: query },
       }),
     });
+
+    if (res.status === 429) {
+      console.warn("AniList kena rate limit untuk '" + seriesName + "', akan dicoba lagi nanti.");
+      return null; // sengaja TIDAK di-cache biar dicoba ulang di sinkronisasi berikutnya
+    }
+
     const json = await res.json();
+    if (json.errors) {
+      console.error("AniList error untuk '" + seriesName + "':", json.errors);
+    }
     const cover = (json && json.data && json.data.Media && json.data.Media.coverImage && json.data.Media.coverImage.large) || null;
     seriesCoverCache.set(seriesName, cover);
     return cover;
   } catch (e) {
-    seriesCoverCache.set(seriesName, null);
-    return null;
+    console.error("Gagal fetch AniList untuk '" + seriesName + "':", e);
+    return null; // tidak di-cache, kemungkinan cuma gangguan jaringan sementara
   }
 }
 
@@ -701,7 +779,7 @@ function renderSeriesGrid(seriesList) {
 
     // Cari cover asli donghua-nya dari AniList berdasarkan nama,
     // ganti thumbnail placeholder begitu ketemu.
-    fetchSeriesCover(s.seriesName).then((cover) => {
+    queueCoverFetch(s.seriesName).then((cover) => {
       if (cover) {
         const imgEl = document.getElementById(imgId);
         if (imgEl) imgEl.src = cover;
