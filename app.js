@@ -27,6 +27,8 @@ const state = {
   avatar: null,
   currentVideoId: null,
   dailymotionId: null,
+  seriesList: [],
+  currentSeries: null,
   pollHandle: null,
 };
 
@@ -564,35 +566,127 @@ async function refreshVideos() {
 
   try {
     const res = await fetch(
-      `https://api.dailymotion.com/user/${encodeURIComponent(state.dailymotionId)}/videos?fields=id,title,thumbnail_360_url&limit=30`
+      `https://api.dailymotion.com/user/${encodeURIComponent(state.dailymotionId)}/videos?fields=id,title,thumbnail_360_url&limit=100`
     );
     const json = await res.json();
     const list = json.list || [];
-    renderVideos(list);
+    state.seriesList = groupVideosBySeries(list);
+
+    if (state.currentSeries) {
+      const series = state.seriesList.find((s) => s.seriesName === state.currentSeries);
+      if (series) {
+        renderEpisodeGrid(series);
+      } else {
+        backToSeriesList();
+      }
+    } else {
+      renderSeriesGrid(state.seriesList);
+    }
   } catch (e) {
     grid.innerHTML = '<p class="text-dim">Gagal memuat video dari Dailymotion. Coba lagi nanti.</p>';
   }
 }
 
-function renderVideos(list) {
-  const grid = document.getElementById("videoGrid");
+// ------------------------------------------------------------
+// Mengelompokkan video jadi "donghua" berdasarkan judul, dengan
+// mendeteksi pola "Episode 12" / "Eps 12" / "EP 12" di judul.
+// Video yang tidak cocok pola tetap ditampilkan sebagai judul
+// tersendiri (dianggap donghua dengan 1 episode).
+// ------------------------------------------------------------
+function groupVideosBySeries(list) {
+  const seriesMap = new Map();
 
-  if (list.length === 0) {
-    grid.innerHTML = '<p class="text-dim">Belum ada video yang diunggah pada channel ini.</p>';
+  list.forEach((v) => {
+    const title = v.title || "Tanpa Judul";
+    const match = title.match(/^(.*?)[\s\-:|]*\b(?:episode|eps?|ep)\.?\s*(\d+)\b.*$/i);
+
+    let seriesName, episodeNumber, episodeLabel;
+    if (match && match[1].trim()) {
+      seriesName = match[1].trim().replace(/[-:|]+$/, "").trim();
+      episodeNumber = parseInt(match[2], 10);
+      episodeLabel = `Episode ${episodeNumber}`;
+    } else {
+      seriesName = title;
+      episodeNumber = 0;
+      episodeLabel = "Tonton";
+    }
+
+    if (!seriesMap.has(seriesName)) {
+      seriesMap.set(seriesName, { seriesName, thumbnail: v.thumbnail_360_url, episodes: [] });
+    }
+    seriesMap.get(seriesName).episodes.push({
+      id: v.id,
+      title,
+      episodeNumber,
+      episodeLabel,
+      thumbnail: v.thumbnail_360_url,
+    });
+  });
+
+  const seriesList = Array.from(seriesMap.values());
+  seriesList.forEach((s) => {
+    s.episodes.sort((a, b) => a.episodeNumber - b.episodeNumber);
+    if (s.episodes.length > 0) s.thumbnail = s.episodes[0].thumbnail;
+  });
+
+  return seriesList;
+}
+
+function renderSeriesGrid(seriesList) {
+  const grid = document.getElementById("videoGrid");
+  document.getElementById("backToSeriesBtn").classList.add("hidden");
+  document.getElementById("gridTitle").textContent = "Pilih Donghua";
+  document.getElementById("gridSubtitle").textContent = "Diperbarui otomatis dari channel Dailymotion resmi kami";
+
+  if (seriesList.length === 0) {
+    grid.innerHTML = '<p class="text-dim">Belum ada donghua yang tersedia.</p>';
     return;
   }
 
   grid.innerHTML = "";
-  list.forEach((v) => {
+  seriesList.forEach((s) => {
     const card = document.createElement("div");
     card.className = "video-card glass-card";
     card.innerHTML = `
-      <img src="${v.thumbnail_360_url || ""}" alt="${escapeHtml(v.title || "")}" loading="lazy">
-      <p>${escapeHtml(v.title || "Tanpa Judul")}</p>
+      <img src="${s.thumbnail || ""}" alt="${escapeHtml(s.seriesName)}" loading="lazy">
+      <p>${escapeHtml(s.seriesName)}</p>
+      <span class="episode-count">${s.episodes.length} Episode</span>
     `;
-    card.addEventListener("click", () => openPlayer(v.id, v.title));
+    card.addEventListener("click", () => openSeries(s.seriesName));
     grid.appendChild(card);
   });
+}
+
+function openSeries(seriesName) {
+  state.currentSeries = seriesName;
+  const series = state.seriesList.find((s) => s.seriesName === seriesName);
+  if (!series) return;
+  renderEpisodeGrid(series);
+  document.getElementById("videoGrid").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function renderEpisodeGrid(series) {
+  const grid = document.getElementById("videoGrid");
+  document.getElementById("backToSeriesBtn").classList.remove("hidden");
+  document.getElementById("gridTitle").textContent = series.seriesName;
+  document.getElementById("gridSubtitle").textContent = `${series.episodes.length} episode tersedia`;
+
+  grid.innerHTML = "";
+  series.episodes.forEach((ep) => {
+    const card = document.createElement("div");
+    card.className = "video-card glass-card";
+    card.innerHTML = `
+      <img src="${ep.thumbnail || ""}" alt="${escapeHtml(ep.title)}" loading="lazy">
+      <p>${escapeHtml(ep.episodeLabel)}</p>
+    `;
+    card.addEventListener("click", () => openPlayer(ep.id, ep.title));
+    grid.appendChild(card);
+  });
+}
+
+function backToSeriesList() {
+  state.currentSeries = null;
+  renderSeriesGrid(state.seriesList || []);
 }
 
 // ------------------------------------------------------------
