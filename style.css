@@ -57,6 +57,8 @@ body {
 
 /* ============= AVATAR & BADGE TERVERIFIKASI ============= */
 .nav-profile { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.edit-username-btn { cursor: pointer; font-size: 13px; opacity: .7; margin-left: 2px; }
+.edit-username-btn:hover { opacity: 1; }
 .avatar-circle {
   width: 30px; height: 30px;
   border-radius: 50%;
