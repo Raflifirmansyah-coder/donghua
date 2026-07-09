@@ -21,6 +21,7 @@
       <div class="nav-profile" onclick="triggerAvatarPicker()" title="Klik untuk ganti foto profil">
         <div id="navAvatar" class="avatar-circle"></div>
         <span class="nav-user">Halo, <strong id="navUsername"></strong><span id="navVerifiedBadge" class="verified-badge hidden" title="Akun terverifikasi">✓</span></span>
+        <span class="edit-username-btn" onclick="event.stopPropagation(); openUsernameModal()" title="Ubah username">✏️</span>
       </div>
       <input type="file" id="avatarFileInput" accept="image/*" class="hidden" onchange="handleAvatarSelected(event)">
       <button class="btn-logout" onclick="handleLogout()">Keluar</button>
@@ -197,6 +198,22 @@
       </div>
     </div>
   </section>
+
+  <!-- ============= MODAL UBAH USERNAME ============= -->
+  <div id="usernameModal" class="center-notice hidden">
+    <div class="center-notice-box confirm-box">
+      <span class="center-notice-icon confirm-icon">✏️</span>
+      <p class="confirm-modal-title">Ubah Username</p>
+      <div class="form-group" style="text-align:left; margin-bottom:18px;">
+        <input type="text" id="newUsernameInput" placeholder="Username baru">
+      </div>
+      <p id="usernameModalError" class="error-text"></p>
+      <div class="confirm-modal-actions">
+        <button class="btn-mini demote" onclick="closeUsernameModal()">Batal</button>
+        <button class="btn-mini promote" onclick="handleUpdateUsername()">Simpan</button>
+      </div>
+    </div>
+  </div>
 
   <!-- ============= MODAL KONFIRMASI (PENGGANTI confirm() BAWAAN) ============= -->
   <div id="confirmModal" class="center-notice hidden">
