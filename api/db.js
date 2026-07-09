@@ -429,7 +429,8 @@ module.exports = async (req, res) => {
           return res.status(400).json({ error: "videoId wajib disertakan." });
         }
         const rows = await runQuery(
-          `SELECT c.username, c.comment, c.created_at, u.avatar,
+          `SELECT c.username, c.comment, c.created_at,
+             CASE WHEN c.username = 'xiaoli' THEN (SELECT value FROM settings WHERE key = 'admin_avatar' LIMIT 1) ELSE u.avatar END AS avatar,
              CASE WHEN c.username = 'xiaoli' THEN TRUE ELSE COALESCE(u.is_verified, FALSE) END AS is_verified,
              CASE WHEN c.username = 'xiaoli' THEN TRUE ELSE COALESCE(u.is_admin, FALSE) END AS is_admin
            FROM comments c
