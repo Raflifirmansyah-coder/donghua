@@ -334,6 +334,43 @@ module.exports = async (req, res) => {
         return res.status(200).json({ users: rows });
       }
 
+      // ============= UBAH USERNAME (USER SENDIRI, VIA TOKEN) =============
+      case "updateUsername": {
+        const verified = verifyToken(payload.userToken, "user");
+        if (!verified) {
+          return res.status(403).json({ error: "Sesi tidak valid atau kedaluwarsa. Silakan login ulang." });
+        }
+        if (verified.username === "xiaoli") {
+          return res.status(400).json({ error: "Username admin utama tidak dapat diubah." });
+        }
+
+        const newUsername = (payload.newUsername || "").trim();
+        if (newUsername.length < 3) {
+          return res.status(400).json({ error: "Username baru minimal 3 karakter." });
+        }
+        if (newUsername === "xiaoli") {
+          return res.status(400).json({ error: "Username tersebut tidak dapat digunakan." });
+        }
+
+        const existing = await runQuery("SELECT id FROM users WHERE username = $1", [newUsername]);
+        if (existing.length > 0) {
+          return res.status(400).json({ error: "Username sudah dipakai. Silakan pilih username lain." });
+        }
+
+        await runQuery("UPDATE users SET username = $1 WHERE username = $2", [newUsername, verified.username]);
+        await runQuery("UPDATE comments SET username = $1 WHERE username = $2", [newUsername, verified.username]);
+
+        const rows = await runQuery("SELECT is_admin FROM users WHERE username = $1", [newUsername]);
+        const newUserToken = signToken(newUsername, "user");
+        const newAdminToken = rows.length > 0 && rows[0].is_admin ? signToken(newUsername, "admin") : null;
+
+        return res.status(200).json({
+          success: true,
+          username: newUsername,
+          userToken: newUserToken,
+          adminToken: newAdminToken,
+        });
+      }
       // ============= UPDATE FOTO PROFIL (USER SENDIRI, VIA TOKEN) =============
       case "updateAvatar": {
         const verified = verifyToken(payload.userToken, "user");
