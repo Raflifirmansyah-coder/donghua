@@ -632,6 +632,49 @@ function groupVideosBySeries(list) {
   return seriesList;
 }
 
+// ------------------------------------------------------------
+// Ambil cover/poster ASLI donghua dari AniList berdasarkan nama
+// (bukan thumbnail episode). Hasil di-cache supaya tidak spam
+// API tiap kali sinkronisasi otomatis berjalan.
+// ------------------------------------------------------------
+const seriesCoverCache = new Map();
+
+function cleanSearchQuery(name) {
+  return name
+    .replace(/\b(sub\s*indo|subtitle\s*indonesia|subindo|indo\s*sub)\b/gi, "")
+    .replace(/\b(end|tamat|full|complete|batch)\b/gi, "")
+    .replace(/\b(480p|720p|1080p|hd|4k)\b/gi, "")
+    .replace(/\(\s*\d{4}\s*\)/g, "")
+    .replace(/\[[^\]]*\]/g, "")
+    .replace(/[_.]+/g, " ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+async function fetchSeriesCover(seriesName) {
+  if (seriesCoverCache.has(seriesName)) return seriesCoverCache.get(seriesName);
+
+  const query = cleanSearchQuery(seriesName) || seriesName;
+
+  try {
+    const res = await fetch("https://graphql.anilist.co", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({
+        query: `query ($search: String) { Media(search: $search, type: ANIME) { coverImage { large } } }`,
+        variables: { search: query },
+      }),
+    });
+    const json = await res.json();
+    const cover = (json && json.data && json.data.Media && json.data.Media.coverImage && json.data.Media.coverImage.large) || null;
+    seriesCoverCache.set(seriesName, cover);
+    return cover;
+  } catch (e) {
+    seriesCoverCache.set(seriesName, null);
+    return null;
+  }
+}
+
 function renderSeriesGrid(seriesList) {
   const grid = document.getElementById("videoGrid");
   document.getElementById("backToSeriesBtn").classList.add("hidden");
@@ -644,16 +687,26 @@ function renderSeriesGrid(seriesList) {
   }
 
   grid.innerHTML = "";
-  seriesList.forEach((s) => {
+  seriesList.forEach((s, idx) => {
     const card = document.createElement("div");
     card.className = "video-card glass-card";
+    const imgId = `seriesCover-${idx}`;
     card.innerHTML = `
-      <img src="${s.thumbnail || ""}" alt="${escapeHtml(s.seriesName)}" loading="lazy">
+      <img id="${imgId}" src="${s.thumbnail || ""}" alt="${escapeHtml(s.seriesName)}" loading="lazy">
       <p>${escapeHtml(s.seriesName)}</p>
       <span class="episode-count">${s.episodes.length} Episode</span>
     `;
     card.addEventListener("click", () => openSeries(s.seriesName));
     grid.appendChild(card);
+
+    // Cari cover asli donghua-nya dari AniList berdasarkan nama,
+    // ganti thumbnail placeholder begitu ketemu.
+    fetchSeriesCover(s.seriesName).then((cover) => {
+      if (cover) {
+        const imgEl = document.getElementById(imgId);
+        if (imgEl) imgEl.src = cover;
+      }
+    });
   });
 }
 
