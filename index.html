@@ -295,7 +295,8 @@
     <div class="container">
       <button class="btn-close" onclick="openHome()">← Kembali</button>
 
-      <div class="relative max-w-2xl mx-auto mt-6 rounded-3xl overflow-hidden border border-cyan-500/20 bg-slate-950/40 backdrop-blur-lg shadow-[0_8px_32px_0_rgba(0,0,0,0.7)]">
+      <!-- KONTEN PROFIL NORMAL -->
+      <div id="publicProfileContent" class="relative max-w-2xl mx-auto mt-6 rounded-3xl overflow-hidden border border-cyan-500/20 bg-slate-950/40 backdrop-blur-lg shadow-[0_8px_32px_0_rgba(0,0,0,0.7)]">
         <div class="absolute inset-0 bg-gradient-to-br from-fuchsia-600/20 via-transparent to-cyan-500/20 pointer-events-none"></div>
         <div class="absolute -top-24 -left-24 w-72 h-72 bg-fuchsia-600/20 rounded-full blur-3xl pointer-events-none"></div>
         <div class="absolute -bottom-24 -right-24 w-72 h-72 bg-cyan-500/20 rounded-full blur-3xl pointer-events-none"></div>
@@ -312,6 +313,20 @@
           </p>
 
           <p id="publicProfileBio" class="text-sm text-slate-300 mt-6 leading-relaxed"></p>
+        </div>
+      </div>
+
+      <!-- KOTAK PESAN PROFIL PRIVAT (gaya sama seperti modal Jadikan Admin/Verifikasi) -->
+      <div id="publicProfilePrivateBox" class="hidden max-w-md mx-auto mt-6 rounded-3xl overflow-hidden border border-yellow-500/30 bg-slate-950/40 backdrop-blur-lg shadow-[0_8px_32px_0_rgba(0,0,0,0.7)]">
+        <div class="absolute inset-0 bg-gradient-to-br from-fuchsia-600/10 via-transparent to-cyan-500/10 pointer-events-none"></div>
+        <div class="relative p-8 text-center">
+          <div class="w-14 h-14 mx-auto mb-4 rounded-full flex items-center justify-center text-2xl bg-yellow-400/15 text-yellow-400 shadow-[inset_0_0_12px_rgba(250,204,21,0.15)]">
+            <i data-lucide="lock"></i>
+          </div>
+          <p class="text-white font-bold text-lg mb-2">Profil Privat</p>
+          <p class="text-slate-400 text-sm leading-relaxed">
+            Profil admin bersifat privat. Admin dapat mengatur visibilitas profilnya sendiri lewat halaman Pengaturan Profil.
+          </p>
         </div>
       </div>
     </div>
