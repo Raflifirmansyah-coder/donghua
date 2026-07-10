@@ -29,6 +29,8 @@ const state = {
   dailymotionId: null,
   seriesList: [],
   currentSeries: null,
+  createdAt: null,
+  isPrivate: false,
   pollHandle: null,
 };
 
@@ -153,6 +155,8 @@ async function uploadAvatar(dataUrl) {
     await api("updateAvatar", { userToken: state.userToken, avatar: dataUrl });
     state.avatar = dataUrl;
     renderNavAvatar();
+    const profileImgEl = document.getElementById("profileAvatarImg");
+    if (profileImgEl) profileImgEl.innerHTML = avatarHtml(state.avatar, state.currentUser);
     showToast("Foto profil berhasil diperbarui!", "success");
   } catch (e) {
     showToast("Gagal mengunggah foto: " + e.message, "error");
@@ -213,6 +217,146 @@ async function handleUpdateUsername() {
     showToast("Username berhasil diubah!", "success");
   } catch (e) {
     errEl.textContent = e.message;
+  }
+}
+
+// ============================================================
+// FITUR BARU: DROPDOWN PROFIL & HALAMAN DETAIL PROFIL
+// (Cyberpunk Glassmorphism) — memakai fungsi avatar/badge/token
+// yang sudah ada, tidak mengubah alur sistem utama.
+// ============================================================
+function toggleProfileDropdown() {
+  document.getElementById("profileDropdown").classList.toggle("hidden");
+}
+
+// Tutup dropdown kalau klik di luar area-nya
+document.addEventListener("click", (e) => {
+  const trigger = document.getElementById("profile-trigger");
+  const dropdown = document.getElementById("profileDropdown");
+  if (!dropdown || dropdown.classList.contains("hidden")) return;
+  if (trigger && (trigger.contains(e.target) || dropdown.contains(e.target))) return;
+  dropdown.classList.add("hidden");
+});
+
+function openProfilePage() {
+  document.getElementById("profileDropdown").classList.add("hidden");
+
+  document.getElementById("profileAvatarImg").innerHTML = avatarHtml(state.avatar, state.currentUser);
+  document.getElementById("profileUsernameDisplay").textContent = state.currentUser || "";
+  document.getElementById("profileBadgeSlot").innerHTML = verifiedBadgeHtml(state.isVerified, state.isAdmin);
+  document.getElementById("profileUsernameInput").value = "";
+  document.getElementById("profileUsernameError").textContent = "";
+
+  const createdEl = document.getElementById("profileCreatedAt");
+  if (state.isAdmin && state.isPrivate) {
+    createdEl.textContent = "Privat";
+  } else if (state.createdAt) {
+    createdEl.textContent = new Date(state.createdAt).toLocaleDateString("id-ID", {
+      day: "numeric", month: "long", year: "numeric",
+    });
+  } else {
+    createdEl.textContent = "-";
+  }
+
+  const privateRow = document.getElementById("profilePrivateRow");
+  const privateToggle = document.getElementById("profilePrivateToggle");
+  if (state.isAdmin) {
+    privateRow.classList.remove("hidden");
+    privateRow.classList.add("flex");
+    privateToggle.checked = state.isPrivate;
+  } else {
+    privateRow.classList.add("hidden");
+    privateRow.classList.remove("flex");
+  }
+
+  showSection("profileSection");
+
+  // Render ulang ikon Lucide untuk elemen yang baru dimasukkan ke DOM
+  if (window.lucide) lucide.createIcons();
+}
+
+async function handleSaveProfileUsername() {
+  const newUsername = document.getElementById("profileUsernameInput").value.trim();
+  const errEl = document.getElementById("profileUsernameError");
+  errEl.textContent = "";
+
+  if (!newUsername) {
+    showToast("Foto/nama tersimpan (tidak ada perubahan username).", "success");
+    return;
+  }
+  if (newUsername.length < 3) {
+    errEl.textContent = "Username baru minimal 3 karakter.";
+    return;
+  }
+
+  try {
+    const action = state.isAdmin ? "updateAdminUsername" : "updateUsername";
+    const payload = state.isAdmin
+      ? { userToken: state.userToken, newUsername }
+      : { userToken: state.userToken, newUsername };
+
+    const data = await api(action, payload);
+
+    state.currentUser = data.username;
+    state.userToken = data.userToken;
+    if (data.adminToken) state.adminToken = data.adminToken;
+
+    sessionStorage.setItem(
+      "donghua_session",
+      JSON.stringify({
+        username: state.currentUser,
+        isAdmin: state.isAdmin,
+        isVerified: state.isVerified,
+        avatar: state.avatar,
+        createdAt: state.createdAt,
+        isPrivate: state.isPrivate,
+        adminToken: state.adminToken,
+        userToken: state.userToken,
+      })
+    );
+
+    document.getElementById("navUsername").textContent = state.currentUser;
+    document.getElementById("profileUsernameDisplay").textContent = state.currentUser;
+    document.getElementById("profileUsernameInput").value = "";
+
+    showToast("Username berhasil diubah! ✨", "success");
+  } catch (e) {
+    errEl.textContent = e.message;
+    showToast(e.message, "error");
+  }
+}
+
+async function handleToggleAdminPrivate(isChecked) {
+  try {
+    await api("setAdminPrivate", { adminToken: state.adminToken, isPrivate: isChecked });
+    state.isPrivate = isChecked;
+
+    sessionStorage.setItem(
+      "donghua_session",
+      JSON.stringify({
+        username: state.currentUser,
+        isAdmin: state.isAdmin,
+        isVerified: state.isVerified,
+        avatar: state.avatar,
+        createdAt: state.createdAt,
+        isPrivate: state.isPrivate,
+        adminToken: state.adminToken,
+        userToken: state.userToken,
+      })
+    );
+
+    const createdEl = document.getElementById("profileCreatedAt");
+    if (isChecked) {
+      createdEl.textContent = "Privat";
+    } else if (state.createdAt) {
+      createdEl.textContent = new Date(state.createdAt).toLocaleDateString("id-ID", {
+        day: "numeric", month: "long", year: "numeric",
+      });
+    }
+
+    showToast(isChecked ? "Tanggal bergabung sekarang privat 🔒" : "Tanggal bergabung kembali terlihat.", "success");
+  } catch (e) {
+    showToast("Gagal mengubah pengaturan: " + e.message, "error");
   }
 }
 
@@ -512,6 +656,8 @@ async function handleLogin() {
       state.isAdmin = true;
       state.isVerified = !!data.user.is_verified;
       state.avatar = data.user.avatar || null;
+      state.createdAt = data.user.created_at || null;
+      state.isPrivate = !!data.user.is_private;
       state.adminToken = data.adminToken;
       state.userToken = data.userToken;
       sessionStorage.setItem(
@@ -521,6 +667,8 @@ async function handleLogin() {
           isAdmin: true,
           isVerified: state.isVerified,
           avatar: state.avatar,
+          createdAt: state.createdAt,
+          isPrivate: state.isPrivate,
           adminToken: data.adminToken,
           userToken: data.userToken,
         })
@@ -545,6 +693,8 @@ async function handleLogin() {
     state.isAdmin = false;
     state.isVerified = !!data.user.is_verified;
     state.avatar = data.user.avatar || null;
+    state.createdAt = data.user.created_at || null;
+    state.isPrivate = false;
     state.adminToken = null;
     state.userToken = data.userToken;
     sessionStorage.setItem(
@@ -554,6 +704,7 @@ async function handleLogin() {
         isAdmin: false,
         isVerified: state.isVerified,
         avatar: state.avatar,
+        createdAt: state.createdAt,
         userToken: data.userToken,
       })
     );
@@ -1092,6 +1243,7 @@ if ("serviceWorker" in navigator) {
 }
 
 window.addEventListener("DOMContentLoaded", () => {
+  if (window.lucide) lucide.createIcons();
   const saved = sessionStorage.getItem("donghua_session");
 
   if (saved) {
@@ -1102,6 +1254,8 @@ window.addEventListener("DOMContentLoaded", () => {
       state.isVerified = !!s.isVerified;
       state.avatar = s.avatar || null;
       state.adminToken = s.adminToken || null;
+      state.createdAt = s.createdAt || null;
+      state.isPrivate = !!s.isPrivate;
       state.userToken = s.userToken || null;
       enterApp();
       if (state.isAdmin) openAdmin();
