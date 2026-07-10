@@ -261,11 +261,18 @@
             <p id="profileUsernameError" class="text-red-400 text-xs mt-2 min-h-[16px]"></p>
           </div>
 
+          <!-- FORM BIO -->
+          <div class="mb-6">
+            <label class="block text-xs font-semibold text-slate-400 mb-2 tracking-wide uppercase">Bio</label>
+            <textarea id="profileBioInput" rows="3" maxlength="300" placeholder="Ceritakan sedikit tentang dirimu..."
+                      class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-500 outline-none transition focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/30 resize-none"></textarea>
+          </div>
+
           <!-- TOGGLE PRIVAT (HANYA MUNCUL UNTUK ADMIN) -->
           <div id="profilePrivateRow" class="hidden items-center justify-between mb-6 px-4 py-3 rounded-xl bg-white/5 border border-white/10">
             <span class="text-sm text-slate-300 flex items-center gap-2">
               <i data-lucide="lock" class="w-4 h-4 text-yellow-400"></i>
-              Privatkan tanggal bergabung
+              Privatkan profil (bio &amp; tanggal bergabung)
             </span>
             <input type="checkbox" id="profilePrivateToggle" onchange="handleToggleAdminPrivate(this.checked)"
                    class="w-5 h-5 accent-cyan-500 cursor-pointer" />
@@ -276,6 +283,35 @@
                   class="w-full py-3 rounded-xl font-bold text-white bg-gradient-to-r from-fuchsia-600 to-cyan-500 shadow-[0_0_16px_rgba(217,70,239,0.4)] transition hover:shadow-[0_0_28px_rgba(6,182,212,0.6)] hover:scale-[1.02]">
             Simpan Perubahan
           </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       SECTION BARU: LIHAT PROFIL ORANG LAIN (READ-ONLY)
+       ============================================================ -->
+  <section id="publicProfileSection" class="page-section">
+    <div class="container">
+      <button class="btn-close" onclick="openHome()">← Kembali</button>
+
+      <div class="relative max-w-2xl mx-auto mt-6 rounded-3xl overflow-hidden border border-cyan-500/20 bg-slate-950/40 backdrop-blur-lg shadow-[0_8px_32px_0_rgba(0,0,0,0.7)]">
+        <div class="absolute inset-0 bg-gradient-to-br from-fuchsia-600/20 via-transparent to-cyan-500/20 pointer-events-none"></div>
+        <div class="absolute -top-24 -left-24 w-72 h-72 bg-fuchsia-600/20 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute -bottom-24 -right-24 w-72 h-72 bg-cyan-500/20 rounded-full blur-3xl pointer-events-none"></div>
+
+        <div class="relative p-8 md:p-10 text-center">
+          <div id="publicProfileAvatar" class="w-24 h-24 mx-auto rounded-full overflow-hidden border-2 border-cyan-500/40 shadow-[inset_0_0_12px_rgba(6,182,212,0.15)] flex items-center justify-center text-3xl font-black bg-gradient-to-br from-cyan-400 to-blue-600 text-slate-950"></div>
+
+          <div class="flex items-center justify-center gap-2 mt-4">
+            <span id="publicProfileUsername" class="text-lg font-bold text-white"></span>
+            <span id="publicProfileBadge"></span>
+          </div>
+          <p class="text-xs text-slate-500 mt-1">
+            Bergabung sejak <span id="publicProfileCreatedAt" class="text-cyan-400 font-semibold">-</span>
+          </p>
+
+          <p id="publicProfileBio" class="text-sm text-slate-300 mt-6 leading-relaxed"></p>
         </div>
       </div>
     </div>
