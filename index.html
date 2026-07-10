@@ -85,7 +85,7 @@
           <input type="password" id="loginPassword" placeholder="Masukkan password">
         </div>
 
-        <button class="btn-primary" onclick="handleLogin()">Masuk</button>
+        <button class="btn-primary" id="loginSubmitBtn" onclick="handleLogin()">Masuk</button>
         <p class="error-text" id="loginError"></p>
 
         <p class="switch-text">Belum punya akun? <a onclick="toggleAuthCard('register')">Daftar di sini</a></p>
@@ -117,7 +117,7 @@
           <input type="password" id="registerPassword" placeholder="Buat password">
         </div>
 
-        <button class="btn-primary" onclick="handleRegister()">Daftar</button>
+        <button class="btn-primary" id="registerSubmitBtn" onclick="handleRegister()">Daftar</button>
         <p class="error-text" id="registerError"></p>
 
         <p class="switch-text">Sudah punya akun? <a onclick="toggleAuthCard('login')">Masuk di sini</a></p>
