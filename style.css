@@ -13,6 +13,7 @@
   --text-dim: #94a3b8;
   --danger: #f87171;
   --glass-bg: rgba(15, 23, 42, 0.7);
+  --bg-photo: url('https://i.pinimg.com/1200x/38/57/ea/3857ea44c8db403703b568dd87ff6549.jpg');
   --glass-border: rgba(34, 211, 238, 0.25);
   --radius: 16px;
 }
@@ -136,10 +137,9 @@ body {
   z-index: -1;
   overflow: hidden;
   background:
-    radial-gradient(circle at 15% 6%, rgba(20, 60, 42, 0.85), transparent 38%),
-    radial-gradient(circle at 85% 6%, rgba(20, 60, 42, 0.85), transparent 38%),
-    radial-gradient(circle at 50% 30%, rgba(255, 255, 255, 0.12), transparent 55%),
-    linear-gradient(180deg, #0d2b20 0%, #1f6b4a 32%, #3fae6e 58%, #5ec97e 82%, #4fae6c 100%);
+    var(--bg-photo) center center / cover no-repeat,
+    radial-gradient(circle at 78% 10%, rgba(255, 250, 224, 0.95), rgba(255, 236, 170, 0.45) 22%, transparent 55%),
+    linear-gradient(180deg, #dff4fb 0%, #c3ecdc 32%, #9adcae 62%, #6ec988 100%);
 }
 
 /* Kluster daun dekoratif di sudut atas (gaya ilustrasi hutan) */
@@ -213,10 +213,15 @@ body {
 .static-drop {
   position: absolute;
   border-radius: 42% 58% 55% 45% / 55% 42% 58% 45%;
-  background: radial-gradient(circle at 32% 28%, rgba(255,255,255,0.9), rgba(220,245,235,0.35) 45%, rgba(150,210,190,0.15) 75%, transparent 100%);
+  background-image: var(--bg-photo);
+  background-attachment: fixed;
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+  filter: brightness(1.22) saturate(1.35) contrast(1.12);
   box-shadow:
     inset -3px -4px 6px rgba(255, 255, 255, 0.55),
-    inset 3px 5px 9px rgba(0, 60, 40, 0.25),
+    inset 3px 5px 9px rgba(0, 0, 0, 0.35),
     0 2px 4px rgba(0, 0, 0, 0.22);
 }
 .static-drop::after {
@@ -237,10 +242,15 @@ body {
   height: 17px;
   --s: 1;
   border-radius: 45% 55% 52% 48% / 60% 55% 45% 40%;
-  background: radial-gradient(circle at 32% 28%, rgba(255,255,255,0.9), rgba(220,245,235,0.35) 45%, rgba(150,210,190,0.15) 75%, transparent 100%);
+  background-image: var(--bg-photo);
+  background-attachment: fixed;
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+  filter: brightness(1.25) saturate(1.4) contrast(1.15);
   box-shadow:
     inset -2px -3px 4px rgba(255, 255, 255, 0.6),
-    inset 2px 3px 6px rgba(0, 60, 40, 0.28),
+    inset 2px 3px 6px rgba(0, 0, 0, 0.32),
     0 2px 4px rgba(0, 0, 0, 0.18);
   animation: dropSlide linear infinite;
   animation-timing-function: cubic-bezier(.3, 0, .7, 1);
