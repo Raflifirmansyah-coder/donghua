@@ -307,19 +307,49 @@ body {
   padding: 40px 32px;
   text-align: center;
   overflow: hidden;
-  border: 1px solid rgba(34, 211, 238, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 26px;
+  backdrop-filter: blur(24px) saturate(1.35);
+  -webkit-backdrop-filter: blur(24px) saturate(1.35);
   box-shadow:
     0 0 18px rgba(34, 211, 238, 0.25),
     0 0 55px rgba(14, 165, 233, 0.15),
     inset 0 0 30px rgba(34, 211, 238, 0.04);
-  animation: fadeUp .5s ease, neonPulse 4.5s ease-in-out infinite, cardFloat 6s ease-in-out infinite;
+  animation: fadeUp .5s ease, neonPulse 4.5s ease-in-out infinite;
+  transform: perspective(900px) rotateY(var(--ry, 0deg));
+  transition: transform .15s ease-out;
+  will-change: transform;
 }
 .auth-card.active { display: block; }
 .card-content { position: relative; z-index: 3; }
 
-@keyframes cardFloat {
-  0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(-8px); }
+/* Tombol khusus di halaman Login/Register: gradient ungu-violet
+   (tombol lain di aplikasi tetap warna cyan seperti biasa) */
+.auth-card .btn-primary {
+  background: linear-gradient(120deg, #8b5cf6, #6366f1);
+  color: #ffffff;
+  box-shadow: 0 4px 16px rgba(139, 92, 246, 0.4);
+}
+.auth-card .btn-primary:hover {
+  box-shadow: 0 0 24px rgba(139, 92, 246, 0.55), 0 6px 20px rgba(99, 102, 241, 0.35);
+}
+
+/* Spinner loading saat tombol Masuk/Daftar diproses */
+.btn-primary.is-loading {
+  color: transparent;
+  pointer-events: none;
+  position: relative;
+}
+.btn-primary.is-loading::after {
+  content: "";
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 18px; height: 18px;
+  margin: -9px 0 0 -9px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
 }
 
 @keyframes fadeUp {
