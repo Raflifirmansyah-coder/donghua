@@ -134,6 +134,9 @@ async function initTables() {
     ALTER TABLE users ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT FALSE;
   `);
   await runQuery(`
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS bio TEXT;
+  `);
+  await runQuery(`
     CREATE TABLE IF NOT EXISTS comments (
       id SERIAL PRIMARY KEY,
       video_id TEXT NOT NULL,
@@ -299,6 +302,9 @@ module.exports = async (req, res) => {
           const avatarRows = await runQuery("SELECT value FROM settings WHERE key = 'admin_avatar' LIMIT 1");
           const avatar = avatarRows.length > 0 ? avatarRows[0].value : null;
 
+          const bioRows = await runQuery("SELECT value FROM settings WHERE key = 'admin_bio' LIMIT 1");
+          const bio = bioRows.length > 0 ? bioRows[0].value : "";
+
           let createdRows = await runQuery("SELECT value FROM settings WHERE key = 'admin_created_at' LIMIT 1");
           let createdAt;
           if (createdRows.length > 0) {
@@ -311,8 +317,10 @@ module.exports = async (req, res) => {
             );
           }
 
+          // Profil admin OTOMATIS PRIVAT secara default. Kalau belum
+          // pernah diatur sama sekali, dianggap privat (aman by default).
           const privateRows = await runQuery("SELECT value FROM settings WHERE key = 'admin_private' LIMIT 1");
-          const isPrivate = privateRows.length > 0 && privateRows[0].value === "true";
+          const isPrivate = privateRows.length === 0 || privateRows[0].value === "true";
 
           const adminToken = signToken(currentAdminUsername, "admin");
           const userToken = signToken(currentAdminUsername, "user");
@@ -320,6 +328,7 @@ module.exports = async (req, res) => {
             user: {
               username: currentAdminUsername,
               avatar,
+              bio,
               is_verified: true,
               is_admin: true,
               created_at: createdAt,
@@ -339,7 +348,7 @@ module.exports = async (req, res) => {
         }
 
         const rows = await runQuery(
-          "SELECT id, username, email, avatar, is_admin, is_verified, created_at FROM users WHERE username = $1 AND password = $2 AND email = $3 LIMIT 1",
+          "SELECT id, username, email, avatar, is_admin, is_verified, bio, created_at FROM users WHERE username = $1 AND password = $2 AND email = $3 LIMIT 1",
           [username, password, email]
         );
         if (rows.length === 0) {
@@ -453,6 +462,71 @@ module.exports = async (req, res) => {
           [isPrivate ? "true" : "false"]
         );
         return res.status(200).json({ success: true, is_private: isPrivate });
+      }
+
+      // ============= UPDATE BIO (USER SENDIRI, VIA TOKEN) =============
+      case "updateBio": {
+        const verified = verifyToken(payload.userToken, "user");
+        if (!verified) {
+          return res.status(403).json({ error: "Sesi tidak valid atau kedaluwarsa. Silakan login ulang." });
+        }
+        const bio = (payload.bio || "").slice(0, 300); // batasi panjang bio
+
+        if (verified.username === "xiaoli" || verified.username === (await getAdminUsername())) {
+          await runQuery(
+            `INSERT INTO settings (key, value) VALUES ('admin_bio', $1) ON CONFLICT (key) DO UPDATE SET value = $1`,
+            [bio]
+          );
+        } else {
+          await runQuery("UPDATE users SET bio = $1 WHERE username = $2", [bio, verified.username]);
+        }
+        return res.status(200).json({ success: true, bio });
+      }
+
+      // ============= LIHAT PROFIL PUBLIK USER LAIN =============
+      case "getPublicProfile": {
+        const targetUsername = (req.method === "GET" ? req.query.username : payload.username) || "";
+        if (!targetUsername) {
+          return res.status(400).json({ error: "Username wajib disertakan." });
+        }
+
+        const currentAdminUsername = await getAdminUsername();
+        const isTargetAdmin = targetUsername === "xiaoli" || targetUsername === currentAdminUsername;
+
+        if (isTargetAdmin) {
+          const privateRows = await runQuery("SELECT value FROM settings WHERE key = 'admin_private' LIMIT 1");
+          const isPrivate = privateRows.length === 0 || privateRows[0].value === "true";
+
+          if (isPrivate) {
+            return res.status(200).json({ profile: null, isPrivate: true, isAdminProfile: true });
+          }
+
+          const avatarRows = await runQuery("SELECT value FROM settings WHERE key = 'admin_avatar' LIMIT 1");
+          const bioRows = await runQuery("SELECT value FROM settings WHERE key = 'admin_bio' LIMIT 1");
+          const createdRows = await runQuery("SELECT value FROM settings WHERE key = 'admin_created_at' LIMIT 1");
+
+          return res.status(200).json({
+            profile: {
+              username: currentAdminUsername,
+              avatar: avatarRows.length > 0 ? avatarRows[0].value : null,
+              bio: bioRows.length > 0 ? bioRows[0].value : "",
+              is_verified: true,
+              is_admin: true,
+              created_at: createdRows.length > 0 ? createdRows[0].value : null,
+            },
+            isPrivate: false,
+            isAdminProfile: true,
+          });
+        }
+
+        const rows = await runQuery(
+          "SELECT username, avatar, bio, is_verified, is_admin, created_at FROM users WHERE username = $1 LIMIT 1",
+          [targetUsername]
+        );
+        if (rows.length === 0) {
+          return res.status(404).json({ error: "User tidak ditemukan." });
+        }
+        return res.status(200).json({ profile: rows[0], isPrivate: false, isAdminProfile: false });
       }
 
       // ============= UPDATE FOTO PROFIL (USER SENDIRI, VIA TOKEN) =============
