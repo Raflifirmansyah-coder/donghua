@@ -31,6 +31,7 @@ const state = {
   currentSeries: null,
   createdAt: null,
   isPrivate: false,
+  bio: "",
   pollHandle: null,
 };
 
@@ -238,6 +239,43 @@ document.addEventListener("click", (e) => {
   dropdown.classList.add("hidden");
 });
 
+// ------------------------------------------------------------
+// LIHAT PROFIL ORANG LAIN (PUBLIK, READ-ONLY)
+// ------------------------------------------------------------
+async function openPublicProfile(username) {
+  try {
+    const data = await api("getPublicProfile", { username }, "GET");
+
+    if (data.isPrivate) {
+      showCenterNotice(
+        "Profil admin bersifat privat. Admin dapat mengatur visibilitas profilnya sendiri lewat halaman Pengaturan Profil.",
+        "error",
+        3200
+      );
+      return;
+    }
+
+    if (!data.profile) {
+      showToast("Profil tidak ditemukan.", "error");
+      return;
+    }
+
+    const p = data.profile;
+    document.getElementById("publicProfileAvatar").innerHTML = avatarHtml(p.avatar, p.username);
+    document.getElementById("publicProfileUsername").textContent = p.username;
+    document.getElementById("publicProfileBadge").innerHTML = verifiedBadgeHtml(p.is_verified, p.is_admin);
+    document.getElementById("publicProfileCreatedAt").textContent = p.created_at
+      ? new Date(p.created_at).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })
+      : "-";
+    document.getElementById("publicProfileBio").textContent = p.bio && p.bio.trim() ? p.bio : "Belum ada bio.";
+
+    showSection("publicProfileSection");
+    if (window.lucide) lucide.createIcons();
+  } catch (e) {
+    showToast("Gagal memuat profil: " + e.message, "error");
+  }
+}
+
 function openProfilePage() {
   document.getElementById("profileDropdown").classList.add("hidden");
 
@@ -246,6 +284,7 @@ function openProfilePage() {
   document.getElementById("profileBadgeSlot").innerHTML = verifiedBadgeHtml(state.isVerified, state.isAdmin);
   document.getElementById("profileUsernameInput").value = "";
   document.getElementById("profileUsernameError").textContent = "";
+  document.getElementById("profileBioInput").value = state.bio || "";
 
   const createdEl = document.getElementById("profileCreatedAt");
   if (state.isAdmin && state.isPrivate) {
@@ -277,29 +316,35 @@ function openProfilePage() {
 
 async function handleSaveProfileUsername() {
   const newUsername = document.getElementById("profileUsernameInput").value.trim();
+  const newBio = document.getElementById("profileBioInput").value.trim();
   const errEl = document.getElementById("profileUsernameError");
   errEl.textContent = "";
 
-  if (!newUsername) {
-    showToast("Foto/nama tersimpan (tidak ada perubahan username).", "success");
-    return;
-  }
-  if (newUsername.length < 3) {
+  if (newUsername && newUsername.length < 3) {
     errEl.textContent = "Username baru minimal 3 karakter.";
     return;
   }
 
   try {
-    const action = state.isAdmin ? "updateAdminUsername" : "updateUsername";
-    const payload = state.isAdmin
-      ? { userToken: state.userToken, newUsername }
-      : { userToken: state.userToken, newUsername };
+    // Simpan username baru kalau diisi
+    if (newUsername) {
+      const action = state.isAdmin ? "updateAdminUsername" : "updateUsername";
+      const data = await api(action, { userToken: state.userToken, newUsername });
 
-    const data = await api(action, payload);
+      state.currentUser = data.username;
+      state.userToken = data.userToken;
+      if (data.adminToken) state.adminToken = data.adminToken;
 
-    state.currentUser = data.username;
-    state.userToken = data.userToken;
-    if (data.adminToken) state.adminToken = data.adminToken;
+      document.getElementById("navUsername").textContent = state.currentUser;
+      document.getElementById("profileUsernameDisplay").textContent = state.currentUser;
+      document.getElementById("profileUsernameInput").value = "";
+    }
+
+    // Simpan bio kalau berubah dari sebelumnya
+    if (newBio !== (state.bio || "")) {
+      await api("updateBio", { userToken: state.userToken, bio: newBio });
+      state.bio = newBio;
+    }
 
     sessionStorage.setItem(
       "donghua_session",
@@ -310,16 +355,13 @@ async function handleSaveProfileUsername() {
         avatar: state.avatar,
         createdAt: state.createdAt,
         isPrivate: state.isPrivate,
+        bio: state.bio,
         adminToken: state.adminToken,
         userToken: state.userToken,
       })
     );
 
-    document.getElementById("navUsername").textContent = state.currentUser;
-    document.getElementById("profileUsernameDisplay").textContent = state.currentUser;
-    document.getElementById("profileUsernameInput").value = "";
-
-    showToast("Username berhasil diubah! ✨", "success");
+    showToast("Perubahan profil berhasil disimpan! ✨", "success");
   } catch (e) {
     errEl.textContent = e.message;
     showToast(e.message, "error");
@@ -658,6 +700,7 @@ async function handleLogin() {
       state.avatar = data.user.avatar || null;
       state.createdAt = data.user.created_at || null;
       state.isPrivate = !!data.user.is_private;
+      state.bio = data.user.bio || "";
       state.adminToken = data.adminToken;
       state.userToken = data.userToken;
       sessionStorage.setItem(
@@ -669,6 +712,7 @@ async function handleLogin() {
           avatar: state.avatar,
           createdAt: state.createdAt,
           isPrivate: state.isPrivate,
+          bio: state.bio,
           adminToken: data.adminToken,
           userToken: data.userToken,
         })
@@ -695,6 +739,7 @@ async function handleLogin() {
     state.avatar = data.user.avatar || null;
     state.createdAt = data.user.created_at || null;
     state.isPrivate = false;
+    state.bio = data.user.bio || "";
     state.adminToken = null;
     state.userToken = data.userToken;
     sessionStorage.setItem(
@@ -705,6 +750,7 @@ async function handleLogin() {
         isVerified: state.isVerified,
         avatar: state.avatar,
         createdAt: state.createdAt,
+        bio: state.bio,
         userToken: data.userToken,
       })
     );
@@ -1032,9 +1078,9 @@ async function loadComments(videoId) {
       .map(
         (c) => `
         <div class="comment-item">
-          <div class="comment-avatar">${avatarHtml(c.avatar, c.username)}</div>
+          <div class="comment-avatar" style="cursor:pointer" onclick="openPublicProfile('${escapeHtml(c.username)}')">${avatarHtml(c.avatar, c.username)}</div>
           <div class="comment-body">
-            <strong>${escapeHtml(c.username)}</strong>${verifiedBadgeHtml(c.is_verified, c.is_admin)}
+            <strong style="cursor:pointer" onclick="openPublicProfile('${escapeHtml(c.username)}')">${escapeHtml(c.username)}</strong>${verifiedBadgeHtml(c.is_verified, c.is_admin)}
             <p>${escapeHtml(c.comment)}</p>
           </div>
         </div>
@@ -1256,6 +1302,7 @@ window.addEventListener("DOMContentLoaded", () => {
       state.adminToken = s.adminToken || null;
       state.createdAt = s.createdAt || null;
       state.isPrivate = !!s.isPrivate;
+      state.bio = s.bio || "";
       state.userToken = s.userToken || null;
       enterApp();
       if (state.isAdmin) openAdmin();
