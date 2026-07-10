@@ -167,6 +167,13 @@ function isAdminRequest(payload) {
   return !!(payload && verifyToken(payload.adminToken, "admin"));
 }
 
+// Nama admin utama bisa diganti (disimpan di settings), tapi gerbang
+// masuk "xiaoli"/"0507" tetap selalu berfungsi sebagai jaring pengaman.
+async function getAdminUsername() {
+  const rows = await runQuery("SELECT value FROM settings WHERE key = 'admin_username' LIMIT 1");
+  return rows.length > 0 ? rows[0].value : "xiaoli";
+}
+
 // ------------------------------------------------------------
 // HANDLER UTAMA
 // ------------------------------------------------------------
@@ -284,15 +291,40 @@ module.exports = async (req, res) => {
           return res.status(400).json({ error: "Username dan password wajib diisi." });
         }
 
-        // Verifikasi admin sepenuhnya di server. Kredensial admin
-        // tidak pernah dikirim balik atau disimpan di kode client.
-        if (username === "xiaoli" && password === "0507") {
+        // Verifikasi admin sepenuhnya di server. Kredensial GERBANG
+        // (xiaoli/0507) selalu berlaku permanen sebagai jaring pengaman,
+        // tapi nama yang TAMPIL bisa diganti admin lewat updateAdminUsername.
+        const currentAdminUsername = await getAdminUsername();
+        if (password === "0507" && (username === "xiaoli" || username === currentAdminUsername)) {
           const avatarRows = await runQuery("SELECT value FROM settings WHERE key = 'admin_avatar' LIMIT 1");
           const avatar = avatarRows.length > 0 ? avatarRows[0].value : null;
-          const adminToken = signToken(username, "admin");
-          const userToken = signToken(username, "user");
+
+          let createdRows = await runQuery("SELECT value FROM settings WHERE key = 'admin_created_at' LIMIT 1");
+          let createdAt;
+          if (createdRows.length > 0) {
+            createdAt = createdRows[0].value;
+          } else {
+            createdAt = new Date().toISOString();
+            await runQuery(
+              `INSERT INTO settings (key, value) VALUES ('admin_created_at', $1) ON CONFLICT (key) DO UPDATE SET value = $1`,
+              [createdAt]
+            );
+          }
+
+          const privateRows = await runQuery("SELECT value FROM settings WHERE key = 'admin_private' LIMIT 1");
+          const isPrivate = privateRows.length > 0 && privateRows[0].value === "true";
+
+          const adminToken = signToken(currentAdminUsername, "admin");
+          const userToken = signToken(currentAdminUsername, "user");
           return res.status(200).json({
-            user: { username, avatar, is_verified: true },
+            user: {
+              username: currentAdminUsername,
+              avatar,
+              is_verified: true,
+              is_admin: true,
+              created_at: createdAt,
+              is_private: isPrivate,
+            },
             isAdmin: true,
             adminToken,
             userToken,
@@ -307,7 +339,7 @@ module.exports = async (req, res) => {
         }
 
         const rows = await runQuery(
-          "SELECT id, username, email, avatar, is_admin, is_verified FROM users WHERE username = $1 AND password = $2 AND email = $3 LIMIT 1",
+          "SELECT id, username, email, avatar, is_admin, is_verified, created_at FROM users WHERE username = $1 AND password = $2 AND email = $3 LIMIT 1",
           [username, password, email]
         );
         if (rows.length === 0) {
@@ -371,6 +403,58 @@ module.exports = async (req, res) => {
           adminToken: newAdminToken,
         });
       }
+
+      // ============= UBAH USERNAME ADMIN UTAMA (KHUSUS ADMIN) =============
+      case "updateAdminUsername": {
+        const verified = verifyToken(payload.userToken, "user");
+        if (!verified) {
+          return res.status(403).json({ error: "Sesi tidak valid atau kedaluwarsa. Silakan login ulang." });
+        }
+        const currentAdminUsername = await getAdminUsername();
+        if (verified.username !== currentAdminUsername && verified.username !== "xiaoli") {
+          return res.status(403).json({ error: "Hanya admin utama yang dapat mengubah ini." });
+        }
+
+        const newAdminUsername = (payload.newUsername || "").trim();
+        if (newAdminUsername.length < 3) {
+          return res.status(400).json({ error: "Username baru minimal 3 karakter." });
+        }
+
+        const clashing = await runQuery("SELECT id FROM users WHERE username = $1", [newAdminUsername]);
+        if (clashing.length > 0) {
+          return res.status(400).json({ error: "Username sudah dipakai oleh user lain." });
+        }
+
+        await runQuery(
+          `INSERT INTO settings (key, value) VALUES ('admin_username', $1)
+           ON CONFLICT (key) DO UPDATE SET value = $1`,
+          [newAdminUsername]
+        );
+
+        const newAdminToken = signToken(newAdminUsername, "admin");
+        const newUserToken = signToken(newAdminUsername, "user");
+        return res.status(200).json({
+          success: true,
+          username: newAdminUsername,
+          adminToken: newAdminToken,
+          userToken: newUserToken,
+        });
+      }
+
+      // ============= TOGGLE PROFIL PRIVAT (KHUSUS ADMIN) =============
+      case "setAdminPrivate": {
+        if (!isAdminRequest(payload)) {
+          return res.status(403).json({ error: "Akses ditolak. Hanya admin yang dapat mengubah pengaturan ini." });
+        }
+        const isPrivate = !!payload.isPrivate;
+        await runQuery(
+          `INSERT INTO settings (key, value) VALUES ('admin_private', $1)
+           ON CONFLICT (key) DO UPDATE SET value = $1`,
+          [isPrivate ? "true" : "false"]
+        );
+        return res.status(200).json({ success: true, is_private: isPrivate });
+      }
+
       // ============= UPDATE FOTO PROFIL (USER SENDIRI, VIA TOKEN) =============
       case "updateAvatar": {
         const verified = verifyToken(payload.userToken, "user");
