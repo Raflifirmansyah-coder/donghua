@@ -246,12 +246,14 @@ async function openPublicProfile(username) {
   try {
     const data = await api("getPublicProfile", { username }, "GET");
 
+    const contentEl = document.getElementById("publicProfileContent");
+    const privateBoxEl = document.getElementById("publicProfilePrivateBox");
+
     if (data.isPrivate) {
-      showCenterNotice(
-        "Profil admin bersifat privat. Admin dapat mengatur visibilitas profilnya sendiri lewat halaman Pengaturan Profil.",
-        "error",
-        3200
-      );
+      contentEl.classList.add("hidden");
+      privateBoxEl.classList.remove("hidden");
+      showSection("publicProfileSection");
+      if (window.lucide) lucide.createIcons();
       return;
     }
 
@@ -259,6 +261,9 @@ async function openPublicProfile(username) {
       showToast("Profil tidak ditemukan.", "error");
       return;
     }
+
+    contentEl.classList.remove("hidden");
+    privateBoxEl.classList.add("hidden");
 
     const p = data.profile;
     document.getElementById("publicProfileAvatar").innerHTML = avatarHtml(p.avatar, p.username);
