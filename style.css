@@ -798,3 +798,28 @@ tbody tr:hover { background: rgba(34, 211, 238, 0.05); }
   .admin-form-row button { width: 100%; }
   .toast-container { top: 12px; right: 12px; left: 12px; max-width: none; }
 }
+
+/* ============================================================
+   ▼▼▼ TAMBAHAN BARU — FITUR PROFIL PENGGUNA (CYBERPUNK GLASS) ▼▼▼
+   Semua rule di bawah ini murni tambahan untuk mendukung fitur
+   dropdown profil & halaman detail profil yang baru ditambahkan
+   di index.html/app.js. Tidak ada kode lama di atas yang diubah.
+   ============================================================ */
+
+#profileDropdown {
+  animation: dropdownFadeIn .18s ease;
+}
+@keyframes dropdownFadeIn {
+  from { opacity: 0; transform: translateY(-6px) scale(.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+#profileAvatarImg img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+#profileSection .container {
+  min-height: auto;
+}
