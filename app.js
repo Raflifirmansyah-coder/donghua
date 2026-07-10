@@ -65,6 +65,20 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
+// ------------------------------------------------------------
+// EFEK KARTU MIRING MENGIKUTI KURSOR (khusus halaman Login/Register)
+// ------------------------------------------------------------
+window.addEventListener("pointermove", (e) => {
+  const authSection = document.getElementById("authSection");
+  if (!authSection || !authSection.classList.contains("active")) return;
+
+  const activeCard = document.querySelector(".auth-card.active");
+  if (!activeCard) return;
+
+  const nx = e.clientX / window.innerWidth - 0.5;
+  activeCard.style.setProperty("--ry", nx * 9 + "deg");
+});
+
 function isGmail(email) {
   return /^[^\s@]+@gmail\.com$/i.test(email);
 }
@@ -410,7 +424,10 @@ async function handleRegister() {
   }
 
   try {
+    const submitBtn = document.getElementById("registerSubmitBtn");
+    submitBtn.classList.add("is-loading");
     const data = await api("register", { username, email, password, otp });
+    submitBtn.classList.remove("is-loading");
 
     triggerSuccessPulse(card);
     showToast(`Pendaftaran berhasil! Selamat datang, ${username} 🎉`, "success");
@@ -427,6 +444,7 @@ async function handleRegister() {
 
     setTimeout(() => enterApp(), 700);
   } catch (e) {
+    document.getElementById("registerSubmitBtn").classList.remove("is-loading");
     errEl.textContent = e.message;
     triggerShake(card);
     showToast(e.message, "error");
@@ -473,7 +491,10 @@ async function handleLogin() {
   }
 
   try {
+    const submitBtn = document.getElementById("loginSubmitBtn");
+    submitBtn.classList.add("is-loading");
     const data = await api("login", { username, password, email });
+    submitBtn.classList.remove("is-loading");
 
     if (!data.user) {
       errEl.textContent = "Username, email, atau password salah.";
@@ -539,6 +560,7 @@ async function handleLogin() {
 
     setTimeout(() => enterApp(), 700);
   } catch (e) {
+    document.getElementById("loginSubmitBtn").classList.remove("is-loading");
     errEl.textContent = e.message;
     triggerShake(card);
     showToast(e.message, "error");
