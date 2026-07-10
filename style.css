@@ -13,7 +13,6 @@
   --text-dim: #94a3b8;
   --danger: #f87171;
   --glass-bg: rgba(15, 23, 42, 0.7);
-  --bg-photo: url('https://i.pinimg.com/1200x/38/57/ea/3857ea44c8db403703b568dd87ff6549.jpg');
   --glass-border: rgba(34, 211, 238, 0.25);
   --radius: 16px;
 }
@@ -137,10 +136,30 @@ body {
   z-index: -1;
   overflow: hidden;
   background:
-    var(--bg-photo) center center / cover no-repeat,
-    radial-gradient(circle at 78% 10%, rgba(255, 250, 224, 0.95), rgba(255, 236, 170, 0.45) 22%, transparent 55%),
-    linear-gradient(180deg, #dff4fb 0%, #c3ecdc 32%, #9adcae 62%, #6ec988 100%);
+    radial-gradient(circle at 15% 6%, rgba(20, 60, 42, 0.85), transparent 38%),
+    radial-gradient(circle at 85% 6%, rgba(20, 60, 42, 0.85), transparent 38%),
+    radial-gradient(circle at 50% 30%, rgba(255, 255, 255, 0.12), transparent 55%),
+    linear-gradient(180deg, #0d2b20 0%, #1f6b4a 32%, #3fae6e 58%, #5ec97e 82%, #4fae6c 100%);
 }
+
+/* Kluster daun dekoratif di sudut atas (gaya ilustrasi hutan) */
+.leaf-cluster {
+  position: absolute;
+  top: -6%;
+  width: 220px;
+  height: 220px;
+  pointer-events: none;
+}
+.leaf-cluster.left { left: -4%; transform: rotate(-15deg); }
+.leaf-cluster.right { right: -4%; transform: rotate(15deg) scaleX(-1); }
+.leaf-cluster span {
+  position: absolute;
+  border-radius: 0% 60% 0% 60%;
+  background: linear-gradient(135deg, #1d5c3a, #123a24);
+}
+.leaf-cluster span:nth-child(1) { width: 140px; height: 90px; top: 0; left: 10px; transform: rotate(-20deg); }
+.leaf-cluster span:nth-child(2) { width: 100px; height: 70px; top: 40px; left: 70px; transform: rotate(15deg); background: linear-gradient(135deg, #276b45, #164226); }
+.leaf-cluster span:nth-child(3) { width: 80px; height: 55px; top: -10px; left: 90px; transform: rotate(-5deg); background: linear-gradient(135deg, #2f7a4f, #1a4d2c); }
 
 /* ============================================================
    BOKEH HUTAN — HANYA TAMPIL SEBAGAI FALLBACK JIKA FOTO
@@ -194,15 +213,10 @@ body {
 .static-drop {
   position: absolute;
   border-radius: 42% 58% 55% 45% / 55% 42% 58% 45%;
-  background-image: var(--bg-photo);
-  background-attachment: fixed;
-  background-size: cover;
-  background-position: center center;
-  background-repeat: no-repeat;
-  filter: brightness(1.22) saturate(1.35) contrast(1.12);
+  background: radial-gradient(circle at 32% 28%, rgba(255,255,255,0.9), rgba(220,245,235,0.35) 45%, rgba(150,210,190,0.15) 75%, transparent 100%);
   box-shadow:
     inset -3px -4px 6px rgba(255, 255, 255, 0.55),
-    inset 3px 5px 9px rgba(0, 0, 0, 0.35),
+    inset 3px 5px 9px rgba(0, 60, 40, 0.25),
     0 2px 4px rgba(0, 0, 0, 0.22);
 }
 .static-drop::after {
@@ -223,15 +237,10 @@ body {
   height: 17px;
   --s: 1;
   border-radius: 45% 55% 52% 48% / 60% 55% 45% 40%;
-  background-image: var(--bg-photo);
-  background-attachment: fixed;
-  background-size: cover;
-  background-position: center center;
-  background-repeat: no-repeat;
-  filter: brightness(1.25) saturate(1.4) contrast(1.15);
+  background: radial-gradient(circle at 32% 28%, rgba(255,255,255,0.9), rgba(220,245,235,0.35) 45%, rgba(150,210,190,0.15) 75%, transparent 100%);
   box-shadow:
     inset -2px -3px 4px rgba(255, 255, 255, 0.6),
-    inset 2px 3px 6px rgba(0, 0, 0, 0.32),
+    inset 2px 3px 6px rgba(0, 60, 40, 0.28),
     0 2px 4px rgba(0, 0, 0, 0.18);
   animation: dropSlide linear infinite;
   animation-timing-function: cubic-bezier(.3, 0, .7, 1);
@@ -307,14 +316,15 @@ body {
   padding: 40px 32px;
   text-align: center;
   overflow: hidden;
+  background: rgba(20, 35, 40, 0.28);
   border: 1px solid rgba(255, 255, 255, 0.25);
   border-radius: 26px;
-  backdrop-filter: blur(24px) saturate(1.35);
-  -webkit-backdrop-filter: blur(24px) saturate(1.35);
+  backdrop-filter: blur(28px) saturate(1.4);
+  -webkit-backdrop-filter: blur(28px) saturate(1.4);
   box-shadow:
-    0 0 18px rgba(34, 211, 238, 0.25),
-    0 0 55px rgba(14, 165, 233, 0.15),
-    inset 0 0 30px rgba(34, 211, 238, 0.04);
+    0 0 18px rgba(34, 211, 238, 0.2),
+    0 8px 40px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
   animation: fadeUp .5s ease, neonPulse 4.5s ease-in-out infinite;
   transform: perspective(900px) rotateY(var(--ry, 0deg));
   transition: transform .15s ease-out;
@@ -394,6 +404,11 @@ body {
   outline: none;
   transition: border-color .2s;
 }
+.auth-card .form-group input {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+.auth-card .form-group input::placeholder { color: rgba(226, 232, 240, 0.65); }
 .form-group input:focus, .comment-input input:focus, .admin-form input:focus {
   border-color: var(--cyan);
   box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.15), 0 0 14px rgba(34, 211, 238, 0.35);
