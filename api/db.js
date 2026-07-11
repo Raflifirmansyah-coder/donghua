@@ -497,18 +497,33 @@ module.exports = async (req, res) => {
           const privateRows = await runQuery("SELECT value FROM settings WHERE key = 'admin_private' LIMIT 1");
           const isPrivate = privateRows.length === 0 || privateRows[0].value === "true";
 
+          const avatarRows = await runQuery("SELECT value FROM settings WHERE key = 'admin_avatar' LIMIT 1");
+          const avatar = avatarRows.length > 0 ? avatarRows[0].value : null;
+
           if (isPrivate) {
-            return res.status(200).json({ profile: null, isPrivate: true, isAdminProfile: true });
+            // Foto, nama, dan badge tetap ditampilkan. Hanya bio &
+            // tanggal bergabung yang disembunyikan (null).
+            return res.status(200).json({
+              profile: {
+                username: currentAdminUsername,
+                avatar,
+                bio: null,
+                is_verified: true,
+                is_admin: true,
+                created_at: null,
+              },
+              isPrivate: true,
+              isAdminProfile: true,
+            });
           }
 
-          const avatarRows = await runQuery("SELECT value FROM settings WHERE key = 'admin_avatar' LIMIT 1");
           const bioRows = await runQuery("SELECT value FROM settings WHERE key = 'admin_bio' LIMIT 1");
           const createdRows = await runQuery("SELECT value FROM settings WHERE key = 'admin_created_at' LIMIT 1");
 
           return res.status(200).json({
             profile: {
               username: currentAdminUsername,
-              avatar: avatarRows.length > 0 ? avatarRows[0].value : null,
+              avatar,
               bio: bioRows.length > 0 ? bioRows[0].value : "",
               is_verified: true,
               is_admin: true,
