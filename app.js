@@ -246,33 +246,32 @@ async function openPublicProfile(username) {
   try {
     const data = await api("getPublicProfile", { username }, "GET");
 
-    const contentEl = document.getElementById("publicProfileContent");
-    const privateBoxEl = document.getElementById("publicProfilePrivateBox");
-
-    if (data.isPrivate) {
-      contentEl.classList.add("hidden");
-      privateBoxEl.classList.remove("hidden");
-      showSection("publicProfileSection");
-      if (window.lucide) lucide.createIcons();
-      return;
-    }
-
     if (!data.profile) {
       showToast("Profil tidak ditemukan.", "error");
       return;
     }
 
-    contentEl.classList.remove("hidden");
-    privateBoxEl.classList.add("hidden");
-
     const p = data.profile;
+
+    // Foto, nama, dan badge selalu ditampilkan, privat atau tidak.
     document.getElementById("publicProfileAvatar").innerHTML = avatarHtml(p.avatar, p.username);
     document.getElementById("publicProfileUsername").textContent = p.username;
     document.getElementById("publicProfileBadge").innerHTML = verifiedBadgeHtml(p.is_verified, p.is_admin);
-    document.getElementById("publicProfileCreatedAt").textContent = p.created_at
-      ? new Date(p.created_at).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })
-      : "-";
-    document.getElementById("publicProfileBio").textContent = p.bio && p.bio.trim() ? p.bio : "Belum ada bio.";
+
+    const metaNormal = document.getElementById("publicProfileMetaNormal");
+    const metaLocked = document.getElementById("publicProfileMetaLocked");
+
+    if (data.isPrivate) {
+      metaNormal.classList.add("hidden");
+      metaLocked.classList.remove("hidden");
+    } else {
+      metaNormal.classList.remove("hidden");
+      metaLocked.classList.add("hidden");
+      document.getElementById("publicProfileCreatedAt").textContent = p.created_at
+        ? new Date(p.created_at).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })
+        : "-";
+      document.getElementById("publicProfileBio").textContent = p.bio && p.bio.trim() ? p.bio : "Belum ada bio.";
+    }
 
     showSection("publicProfileSection");
     if (window.lucide) lucide.createIcons();
