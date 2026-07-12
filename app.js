@@ -80,6 +80,13 @@ window.addEventListener("pointermove", (e) => {
 
   const nx = e.clientX / window.innerWidth - 0.5;
   activeCard.style.setProperty("--ry", nx * 9 + "deg");
+
+  // Sheen mengikuti posisi kursor relatif terhadap kartu itu sendiri
+  const rect = activeCard.getBoundingClientRect();
+  const mx = ((e.clientX - rect.left) / rect.width) * 100;
+  const my = ((e.clientY - rect.top) / rect.height) * 100;
+  activeCard.style.setProperty("--mx", mx + "%");
+  activeCard.style.setProperty("--my", my + "%");
 });
 
 function isGmail(email) {
